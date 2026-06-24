@@ -49,7 +49,7 @@ try {
     if ("POST".equalsIgnoreCase(request.getMethod())) {
         String accion = request.getParameter("accion");
         if ("guardar".equals(accion)) {
-            ps = con.prepareStatement("insert into tipos_bonificacion (nombre, tipo, valor) values (?, ?, ?)");
+            ps = con.prepareStatement("insert into tipos_bonificacion (nombre, tipo, valor, activo) values (?, ?, ?, true)");
             ps.setString(1, request.getParameter("nombre"));
             ps.setString(2, request.getParameter("tipo"));
             ps.setDouble(3, Double.parseDouble(request.getParameter("valor")));
@@ -57,11 +57,12 @@ try {
             ps.close();
             mensaje = "Bonificación guardada correctamente.";
         } else if ("eliminar".equals(accion)) {
-            ps = con.prepareStatement("delete from tipos_bonificacion where id = ?");
+            // Borrado lógico: cambiamos activo a false en lugar de borrar la fila
+            ps = con.prepareStatement("update tipos_bonificacion set activo = false where id = ?");
             ps.setInt(1, Integer.parseInt(request.getParameter("id")));
             ps.executeUpdate();
             ps.close();
-            mensaje = "Bonificación eliminada.";
+            mensaje = "Bonificación desactivada correctamente.";
         }
     }
 %>
@@ -101,7 +102,8 @@ try {
         <tbody>
         <%
             st = con.createStatement();
-            rs = st.executeQuery("select * from tipos_bonificacion order by id desc");
+            // Filtramos solo los activos
+            rs = st.executeQuery("select * from tipos_bonificacion where activo = true order by id desc");
             while (rs.next()) {
         %>
             <tr>
@@ -110,7 +112,7 @@ try {
                 <td><%= rs.getString("tipo") %></td>
                 <td><%= "porcentaje".equals(rs.getString("tipo")) ? rs.getDouble("valor")+"%" : "Gs. "+rs.getDouble("valor") %></td>
                 <td>
-                    <form method="post" onsubmit="return confirm('¿Eliminar?');">
+                    <form method="post" onsubmit="return confirm('¿Desactivar esta bonificación?');">
                         <input type="hidden" name="accion" value="eliminar">
                         <input type="hidden" name="id" value="<%= rs.getInt("id") %>">
                         <button type="submit" class="btn-eliminar">Eliminar</button>
@@ -122,7 +124,8 @@ try {
     </table>
 
 <%
-} catch (Exception e) { out.println("<div class='alert alert-danger'>Error: " + e.getMessage() + "</div>");
+} catch (Exception e) { 
+    out.println("<div class='alert alert-danger'>Error: " + e.getMessage() + "</div>");
 } finally {
     try { if (rs != null) rs.close(); if (st != null) st.close(); if (ps != null) ps.close(); if (con != null) con.close(); } catch (Exception e) {}
 }
