@@ -107,7 +107,7 @@ if (session.getAttribute("usuario") == null) {
                     Statement stDet = con.createStatement();
                     ResultSet rsDet = stDet.executeQuery("SELECT m.motivo as nombre, dp.monto_aplicado, 'D' as tipo FROM descuentos_persona dp JOIN motivos_descuento m ON dp.motivo_id = m.id WHERE dp.persona_id = "+personaId+" AND dp.mes = "+mesSeleccionado+" AND dp.anio = "+anioSeleccionado+" UNION ALL SELECT t.nombre, bp.monto_aplicado, 'B' FROM bonos_persona bp JOIN tipos_bonificacion t ON bp.bono_id = t.id WHERE bp.persona_id = "+personaId+" AND bp.mes = "+mesSeleccionado+" AND bp.anio = "+anioSeleccionado);
                     while (rsDet.next()) {
-                        detalle.append(rsDet.getString("tipo").equals("B") ? "[B] " : "[D] ").append(rsDet.getString("nombre")).append(": Gs. ").append(guarani.format(rsDet.getDouble("monto_aplicado"))).append("<br>");
+                        detalle.append(rsDet.getString("tipo").equals("B") ? "[A] " : "[B] ").append(rsDet.getString("nombre")).append(": Gs. ").append(guarani.format(rsDet.getDouble("monto_aplicado"))).append("<br>");
                     }
 
                     salarioFinal = sueldoBase + totalBonos - totalDescuentos;
