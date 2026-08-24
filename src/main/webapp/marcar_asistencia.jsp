@@ -27,14 +27,48 @@ try {
     Class.forName("org.postgresql.Driver");
 
     String url = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require";
-                String user = "neondb_owner";
-                String pass = "npg_6rt8OdayAHcm";
+    String user = "neondb_owner";
+    String pass = "npg_6rt8OdayAHcm";
 
-                con = DriverManager.getConnection(url, user, pass);
+    con = DriverManager.getConnection(url, user, pass);
 
-    LocalDate fechaHoy = LocalDate.now();
-    LocalTime horaActual = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
-    LocalTime horaLimite = LocalTime.of(8, 15, 0);
+    // Obtener la fecha y hora exacta directamente desde PostgreSQL adaptada a la zona horaria de Paraguay
+    LocalDate fechaHoy = null;
+    LocalTime horaActual = null;
+
+    PreparedStatement psTime = con.prepareStatement("SELECT CURRENT_DATE, (CURRENT_TIME AT TIME ZONE 'UTC' AT TIME ZONE 'America/Asuncion')::time");
+    ResultSet rsTime = psTime.executeQuery();
+    if (rsTime.next()) {
+        fechaHoy = rsTime.getDate(1).toLocalDate();
+        horaActual = rsTime.getTime(2).toLocalTime().truncatedTo(ChronoUnit.SECONDS);
+    }
+    rsTime.close();
+    psTime.close();
+
+    // Respaldo por seguridad en caso de que la consulta falle
+    if (fechaHoy == null || horaActual == null) {
+        fechaHoy = LocalDate.now();
+        horaActual = LocalTime.now().truncatedTo(ChronoUnit.SECONDS);
+    }
+
+    // Obtener la hora de entrada y tolerancia configuradas en la BD
+    LocalTime horaLimite = LocalTime.of(8, 15, 0); 
+    int toleranciaMinutos = 0;
+
+    PreparedStatement psConf = con.prepareStatement("SELECT hora_entrada, tolerancia_minutos FROM configuracion_horario LIMIT 1");
+    ResultSet rsConf = psConf.executeQuery();
+    if (rsConf.next()) {
+        Time hEntradaDb = rsConf.getTime("hora_entrada");
+        if (hEntradaDb != null) {
+            horaLimite = hEntradaDb.toLocalTime();
+        }
+        toleranciaMinutos = rsConf.getInt("tolerancia_minutos");
+    }
+    rsConf.close();
+    psConf.close();
+
+    // Sumar los minutos de tolerancia a la hora límite permitida
+    LocalTime horaConTolerancia = horaLimite.plusMinutes(toleranciaMinutos);
 
     ps = con.prepareStatement("select * from asistencias where persona_id = ? and fecha = ?");
     ps.setInt(1, personaId);
@@ -48,9 +82,27 @@ try {
         int minutosTardanza = 0;
         String estado = "entrada registrada";
 
-        if (horaActual.isAfter(horaLimite)) {
-            minutosTardanza = (int) ChronoUnit.MINUTES.between(horaLimite, horaActual);
+        // Si marca después de la hora límite + tolerancia, se cuenta la tardanza
+        if (horaActual.isAfter(horaConTolerancia)) {
+            minutosTardanza = (int) ChronoUnit.MINUTES.between(horaConTolerancia, horaActual);
             estado = "tardanza";
+            
+            // APLICAR AUTOMÁTICAMENTE EL DESCUENTO DE 50.000 Gs. EN LA LIQUIDACIÓN
+            int mesActual = fechaHoy.getMonthValue();
+            int anioActual = fechaHoy.getYear();
+            double montoDescuentoTardanza = 50000;
+            int motivoTardanzaId = 1; // ID 1 corresponde a "llegada tardía"
+
+            PreparedStatement psDesc = con.prepareStatement(
+                "INSERT INTO descuentos_persona (persona_id, motivo_id, monto_aplicado, mes, anio) VALUES (?, ?, ?, ?, ?)"
+            );
+            psDesc.setInt(1, personaId);
+            psDesc.setInt(2, motivoTardanzaId);
+            psDesc.setDouble(3, montoDescuentoTardanza);
+            psDesc.setInt(4, mesActual);
+            psDesc.setInt(5, anioActual);
+            psDesc.executeUpdate();
+            psDesc.close();
         }
 
         ps = con.prepareStatement(
