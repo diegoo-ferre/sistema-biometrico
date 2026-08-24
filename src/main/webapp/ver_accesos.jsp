@@ -66,7 +66,7 @@ try {
     }
 
     // LÓGICA DE FILTRADO: Si es admin, ve todo. Si es empleado, solo su CI.
-    String sql = "SELECT a.id, p.nombre, p.ci, a.fecha, a.hora_entrada, a.hora_salida, a.horas_trabajadas, a.estado " +
+    String sql = "SELECT a.id, p.nombre, p.ci, a.fecha, a.hora_entrada, a.hora_salida, a.estado " +
                  "FROM asistencias a JOIN personas p ON a.persona_id = p.id ";
     
     if (!"admin".equals(rol)) {
@@ -94,6 +94,7 @@ try {
     while (rs.next()) {
         hay = true;
         Time horaEntradaDb = rs.getTime("hora_entrada");
+        Time horaSalidaDb = rs.getTime("hora_salida");
         long minutosTardanza = 0;
         
         if (horaEntradaDb != null) {
@@ -103,6 +104,29 @@ try {
                 minutosTardanza = (totalDiferencia > tolerancia) ? (totalDiferencia - tolerancia) : 0;
             }
         }
+
+        // Lógica para formatear las horas trabajadas de forma entendible (sin decimales)
+        String horasTrabajadasTexto = "";
+        if (horaEntradaDb != null && horaSalidaDb != null) {
+            LocalTime entrada = horaEntradaDb.toLocalTime();
+            LocalTime salida = horaSalidaDb.toLocalTime();
+            long totalMinutosTrabajados = ChronoUnit.MINUTES.between(entrada, salida);
+            
+            if (totalMinutosTrabajados < 0) {
+                totalMinutosTrabajados = 0;
+            }
+            
+            long horasTotales = totalMinutosTrabajados / 60;
+            long minutosRestantes = totalMinutosTrabajados % 60;
+            
+            if (horasTotales > 0 && minutosRestantes > 0) {
+                horasTrabajadasTexto = horasTotales + "h " + minutosRestantes + "m";
+            } else if (horasTotales > 0) {
+                horasTrabajadasTexto = horasTotales + "h";
+            } else {
+                horasTrabajadasTexto = minutosRestantes + " min";
+            }
+        }
 %>
             <tr>
                 <td><%= rs.getInt("id") %></td>
@@ -110,8 +134,8 @@ try {
                 <td><%= rs.getString("ci") %></td>
                 <td><%= rs.getDate("fecha") %></td>
                 <td><%= horaEntradaDb != null ? horaEntradaDb : "" %></td>
-                <td><%= rs.getTime("hora_salida") != null ? rs.getTime("hora_salida") : "" %></td>
-                <td><%= rs.getObject("horas_trabajadas") != null ? rs.getDouble("horas_trabajadas") : "" %></td>
+                <td><%= horaSalidaDb != null ? horaSalidaDb : "" %></td>
+                <td><%= horasTrabajadasTexto %></td>
                 <td><%= minutosTardanza %></td>
                 <td>
                     <span class="<%= minutosTardanza > 0 ? "tarde" : "ok" %>">
