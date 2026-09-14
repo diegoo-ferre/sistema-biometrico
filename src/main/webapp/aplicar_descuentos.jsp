@@ -104,9 +104,23 @@ try {
 
             double monto = "porcentaje".equals(tipoMotivo) ? (sueldoBase * valorMotivo / 100.0) : valorMotivo;
             
-            // VALIDACIÓN: El descuento no puede superar el 25% del sueldo base
-            if (monto > (sueldoBase * 0.25)) {
-                mensaje = "Error: El descuento supera el 25% del sueldo base (Tope: Gs. " + guarani.format(sueldoBase * 0.25) + ").";
+            // 4. Calcular la suma de los descuentos ya aplicados a esta persona en el periodo actual
+            ps = con.prepareStatement("select sum(monto_aplicado) as total_actual from descuentos_persona where persona_id = ? and mes = ? and anio = ?");
+            ps.setInt(1, personaId);
+            ps.setInt(2, mesPeriodo);
+            ps.setInt(3, anioPeriodo);
+            rs = ps.executeQuery();
+            double totalDescuentosActuales = 0;
+            if (rs.next()) {
+                totalDescuentosActuales = rs.getDouble("total_actual");
+            }
+            rs.close(); ps.close();
+
+            double topeMaximo = sueldoBase * 0.25;
+
+            // VALIDACIÓN: La suma de los descuentos actuales más el nuevo no puede superar el 25% del sueldo base
+            if ((totalDescuentosActuales + monto) > topeMaximo) {
+                mensaje = "Error: El total de descuentos supera el 25% del sueldo base (Tope permitido: Gs. " + guarani.format(topeMaximo) + ", Ya acumulado: Gs. " + guarani.format(totalDescuentosActuales) + ").";
                 tipoMensaje = "danger";
             } else {
                 ps = con.prepareStatement("insert into descuentos_persona (persona_id, motivo_id, mes, anio, monto_aplicado, nombre, ci, motivo) values (?, ?, ?, ?, ?, ?, ?, ?)");
