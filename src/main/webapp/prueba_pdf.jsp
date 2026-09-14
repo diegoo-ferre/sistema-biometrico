@@ -5,10 +5,64 @@
 <%@ page import="java.text.DecimalFormat" %>
 <%@ page import="java.io.IOException" %>
 
+<%!
+    // Método auxiliar en Java para convertir números a letras en Guaraníes de forma automática
+    private String convertirANumerosLetras(double monto) {
+        long entero = (long) monto;
+        if (entero == 0) return "CERO GUARANIES";
+        
+        String enLetras = convertir(entero);
+        return enLetras.trim() + " GUARANIES";
+    }
+
+    private String convertir(long n) {
+        if (n == 0) return "";
+        if (n < 0) return "MENOS " + convertir(-n);
+        if (n < 20) {
+            String[] unidades = {"", "UN", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE", "DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISEIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"};
+            return unidades[(int)n] + " ";
+        }
+        if (n < 100) {
+            String[] decenas = {"", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"};
+            long d = n / 10;
+            long r = n % 10;
+            if (d == 2 && r > 0) {
+                String[] veintes = {"", "VEINTIUN", "VEINTIDOS", "VEINTITRES", "VEINTICUATRO", "VEINTICINCO", "VEINTISEIS", "VEINTISIETE", "VEINTIOCHO", "VEINTINUEVE"};
+                return veintes[(int)r] + " ";
+            }
+            return decenas[(int)d] + (r > 0 ? " Y " + convertir(r) : " ");
+        }
+        if (n < 1000) {
+            long c = n / 100;
+            long r = n % 100;
+            if (c == 1 && r == 0) return "CIEN ";
+            String[] centenas = {"", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"};
+            return centenas[(int)c] + " " + convertir(r);
+        }
+        if (n < 1000000) {
+            long miles = n / 1000;
+            long r = n % 1000;
+            String s = (miles == 1) ? "MIL " : convertir(miles) + "MIL ";
+            return s + convertir(r);
+        }
+        if (n < 1000000000) {
+            long millones = n / 1000000;
+            long r = n % 1000000;
+            String s = (millones == 1) ? "UN MILLON " : convertir(millones) + "MILLONES ";
+            return s + convertir(r);
+        }
+        long milesMillones = n / 1000000000;
+        long r = n % 1000000000;
+        return convertir(milesMillones) + "MIL " + convertir(r);
+    }
+%>
+
 <%
 // Limpiamos el buffer de respuesta para evitar conflictos con el flujo binario del PDF
-out.clear();
-out = pageContext.pushBody();
+try {
+    out.clear();
+    out = pageContext.pushBody();
+} catch (Exception ignored) {}
 
 // Verificamos si hay sesión activa
 if (session.getAttribute("usuario") == null) {
@@ -45,6 +99,7 @@ double totalDescuentos = 0;
 double totalBonos = 0;
 double sueldoFinal = 0;
 String fechaCierre = "No definida";
+String sueldoFinalEnLetras = "";
 
 try {
     Class.forName("org.postgresql.Driver");
@@ -112,6 +167,9 @@ try {
     }
 
     sueldoFinal = sueldoBase + totalBonos - totalDescuentos;
+
+    // Convertir el monto total automáticamente a letras
+    sueldoFinalEnLetras = convertirANumerosLetras(sueldoFinal);
 
     // Configuramos la respuesta HTTP como PDF
     response.setContentType("application/pdf");
@@ -288,6 +346,12 @@ try {
     tDes.setPadding(6);
     detailTable.addCell(tDes);
 
+    // --- NUEVA FILA: TOTAL A COBRAR EN LETRAS ---
+    PdfPCell tLetras = new PdfPCell(new Phrase("Total a cobrar (en letras): " + sueldoFinalEnLetras, fSmall));
+    tLetras.setColspan(4);
+    tLetras.setPadding(6);
+    detailTable.addCell(tLetras);
+
     documento.add(detailTable);
 
     // --- NETO A COBRAR Y FIRMAS ---
@@ -323,12 +387,15 @@ try {
 
 } catch (Exception e) {
     try {
-        response.reset();
-        response.setContentType("text/html; charset=UTF-8");
-        out.println("<h3>Error al generar el PDF de liquidación:</h3>");
-        out.println("<pre>");
-        e.printStackTrace(new java.io.PrintWriter(out));
-        out.println("</pre>");
+        if (!response.isCommitted()) {
+            response.reset();
+            response.setContentType("text/html; charset=UTF-8");
+            java.io.PrintWriter pw = response.getWriter();
+            pw.println("<h3>Error al generar el PDF de liquidación:</h3>");
+            pw.println("<pre style='color:red;'>");
+            e.printStackTrace(pw);
+            pw.println("</pre>");
+        }
     } catch (Exception ex) {
         ex.printStackTrace();
     }
