@@ -11,7 +11,7 @@
 
     <style>
         body { margin: 0; min-height: 100vh; font-family: Arial, sans-serif; background: linear-gradient(135deg, #02080f, #0b1f2a, #12384a); display: flex; align-items: center; justify-content: center; padding: 30px 15px; }
-        .contenedor { background: rgba(10, 15, 25, 0.85); padding: 40px 35px; border-radius: 25px; color: white; box-shadow: 0 10px 40px rgba(0,0,0,0.9); width: 98%; max-width: 1300px; }
+        .contenedor { background: rgba(10, 15, 25, 0.85); padding: 40px 35px; border-radius: 25px; color: white; box-shadow: 0 10px 40px rgba(0,0,0,0.9); width: 98%; max-width: 1400px; }
         h2 { text-align: center; font-size: 40px; font-weight: bold; margin-bottom: 30px; }
         
         .btn-custom { display: block; width: 100%; max-width: 360px; margin: 10px auto; padding: 12px; border: none; border-radius: 30px; color: white; font-weight: bold; text-decoration: none; transition: 0.3s; background: linear-gradient(30deg, #4225a3, #000738); }
@@ -63,17 +63,23 @@ try {
 
     <table id="tablaPersonas">
         <thead>
-            <tr><th>nombre</th><th>ci</th><th>fecha y hora</th><th>fotos</th><th>acción</th></tr>
+            <tr><th>nombre</th><th>ci</th><th>correo</th><th>teléfono</th><th>dirección</th><th>fecha y hora</th><th>fotos</th><th>acción</th></tr>
         </thead>
         <tbody>
 <%
     ResultSet rs = con.createStatement().executeQuery("select * from personas order by id desc");
     SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
     while (rs.next()) {
+        String correoVal = rs.getString("correo") != null ? rs.getString("correo") : "-";
+        String telefonoVal = rs.getString("telefono") != null ? rs.getString("telefono") : "-";
+        String direccionVal = rs.getString("direccion") != null ? rs.getString("direccion") : "-";
 %>
             <tr>
                 <td><%= rs.getString("nombre") %></td>
                 <td><%= rs.getString("ci") %></td>
+                <td><%= correoVal %></td>
+                <td><%= telefonoVal %></td>
+                <td><%= direccionVal %></td>
                 <td><%= formato.format(rs.getTimestamp("fecha_registro")) %></td>
                 <td>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; max-width: 220px; margin: 0 auto;">
