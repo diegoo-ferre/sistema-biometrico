@@ -6,6 +6,9 @@ String mensaje = "";
 if ("POST".equalsIgnoreCase(request.getMethod())) {
     String nombre = request.getParameter("nombre");
     String ci = request.getParameter("ci");
+    String correo = request.getParameter("correo");
+    String telefono = request.getParameter("telefono");
+    String direccion = request.getParameter("direccion");
     String[] fotos = {
         request.getParameter("foto1"), request.getParameter("foto2"), 
         request.getParameter("foto3"), request.getParameter("foto4"), 
@@ -21,8 +24,8 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
         String user = "neondb_owner";
         String pass = "npg_6rt8OdayAHcm";
         
-        // SQL 1: Guardar persona
-        String sqlPersona = "INSERT INTO personas(nombre, ci, fecha_registro, foto1, foto2, foto3, foto4, foto5) VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)";
+        // SQL 1: Guardar persona con correo, telefono y direccion
+        String sqlPersona = "INSERT INTO personas(nombre, ci, correo, telefono, direccion, fecha_registro, foto1, foto2, foto3, foto4, foto5) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)";
         // SQL 2: Crear usuario (Usuario = Nombre, Password = CI)
         String sqlUsuario = "INSERT INTO usuarios(usuario, password, rol, ci) VALUES (?, ?, 'empleado', ?)";
 
@@ -36,14 +39,16 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
                     
                     psP.setString(1, nombre);
                     psP.setString(2, ci);
-                    psP.setString(3, fotos[0]);
-                    psP.setString(4, fotos[1]);
-                    psP.setString(5, fotos[2]);
-                    psP.setString(6, fotos[3]);
-                    psP.setString(7, fotos[4]);
+                    psP.setString(3, correo);
+                    psP.setString(4, telefono);
+                    psP.setString(5, direccion);
+                    psP.setString(6, fotos[0]);
+                    psP.setString(7, fotos[1]);
+                    psP.setString(8, fotos[2]);
+                    psP.setString(9, fotos[3]);
+                    psP.setString(10, fotos[4]);
                     psP.executeUpdate();
 
-                    // Aquí el cambio solicitado: usuario = nombre, pass = ci
                     psU.setString(1, nombre); 
                     psU.setString(2, ci); 
                     psU.setString(3, ci);
@@ -72,7 +77,7 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
         .contenedor { background: rgba(10, 15, 25, 0.88); padding: 40px 35px; border-radius: 30px; text-align: center; color: white; width: 100%; max-width: 760px; box-shadow: 0 10px 40px rgba(0,0,0,0.9); }
         .camera-box { margin: 0 auto 25px auto; width: 100%; max-width: 520px; border-radius: 22px; overflow: hidden; border: 3px solid rgba(255,255,255,0.08); background: #000; }
         video { width: 100%; display: block; }
-        input[type="text"] { width: 100%; max-width: 400px; padding: 14px; border-radius: 15px; border: none; margin-bottom: 20px; font-size: 16px; outline: none; }
+        input[type="text"], input[type="email"], input[type="tel"] { width: 100%; max-width: 400px; padding: 14px; border-radius: 15px; border: none; margin-bottom: 20px; font-size: 16px; outline: none; }
         .btn-custom { display: block; width: 100%; max-width: 360px; margin: 12px auto; padding: 14px 20px; border: none; border-radius: 30px; color: white; font-size: 18px; font-weight: bold; cursor: pointer; transition: 0.3s ease; }
         .btn-custom:hover { transform: scale(1.03); }
         .btn-captura, .btn-guardar { background: linear-gradient(35deg, #4225a3, #000738); }
@@ -90,6 +95,9 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
     <form method="post" onsubmit="return validarFotos();">
         <input type="text" name="nombre" id="nombre" placeholder="Nombre completo" required>
         <input type="text" name="ci" id="ci" placeholder="Número de CI" required>
+        <input type="email" name="correo" id="correo" placeholder="Correo electrónico">
+        <input type="tel" name="telefono" id="telefono" placeholder="Número de teléfono">
+        <input type="text" name="direccion" id="direccion" placeholder="Dirección">
         <div class="camera-box"> <video id="video" autoplay playsinline muted></video> </div>
         <button type="button" class="btn-custom btn-captura" onclick="capturar()">Capturar Foto</button>
         <div id="contador">Fotos capturadas: 0 / 5</div>
