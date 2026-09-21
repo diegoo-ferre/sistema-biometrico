@@ -57,7 +57,8 @@ try {
     Class.forName("org.postgresql.Driver");
     con = DriverManager.getConnection("jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require", "neondb_owner", "npg_6rt8OdayAHcm");
 
-    ps = con.prepareStatement("SELECT s.id, s.sueldo_final, s.fecha_registro, p.nombre, p.ci FROM salarios s INNER JOIN personas p ON s.persona_id = p.id WHERE EXTRACT(MONTH FROM s.fecha_registro) = ? AND EXTRACT(YEAR FROM s.fecha_registro) = ? ORDER BY s.id DESC");
+    // Consulta corregida usando directamente las columnas mes y anio (con LEFT JOIN para asegurar que traiga el registro aunque falte asociar la persona)
+    ps = con.prepareStatement("SELECT s.id, s.sueldo_final, s.fecha_registro, p.nombre, p.ci FROM salarios s LEFT JOIN personas p ON s.persona_id = p.id WHERE s.mes = ? AND s.anio = ? ORDER BY s.id DESC");
     ps.setInt(1, Integer.parseInt(mes));
     ps.setInt(2, Integer.parseInt(anio));
     rs = ps.executeQuery();
@@ -111,4 +112,4 @@ try {
 </script>
 
 </body>
-</html>
+</html> 
