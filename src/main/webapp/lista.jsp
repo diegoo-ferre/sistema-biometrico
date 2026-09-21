@@ -47,7 +47,8 @@ String mensaje = null;
 Connection con = null;
 try {
     Class.forName("org.postgresql.Driver");
-    con = DriverManager.getConnection("jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require", "neondb_owner", "npg_6rt8OdayAHcm");
+    // Conexión con la zona horaria forzada para corregir la hora al mostrarla
+    con = DriverManager.getConnection("jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&options=-c%20timezone=America/Asuncion", "neondb_owner", "npg_6rt8OdayAHcm");
     
     if ("POST".equalsIgnoreCase(request.getMethod())) {
         String idEliminar = request.getParameter("idEliminar");
