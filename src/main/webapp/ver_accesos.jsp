@@ -39,11 +39,21 @@ try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6
         }
 
         if (personaId != -1) {
+            // CORRECCIÓN: Parseamos usando la zona horaria local de Paraguay para evitar el desfase de 3 horas
+            ZoneId zonaParaguay = ZoneId.of("America/Asuncion");
+            
+            LocalDate fechaParsed = LocalDate.parse(fechaManual);
+            LocalTime entradaParsed = LocalTime.parse(entradaManual);
+            LocalTime salidaParsed = LocalTime.parse(salidaManual);
+
+            ZonedDateTime zdtEntrada = ZonedDateTime.of(fechaParsed, entradaParsed, zonaParaguay);
+            ZonedDateTime zdtSalida = ZonedDateTime.of(fechaParsed, salidaParsed, zonaParaguay);
+
             try (PreparedStatement psInsert = conReg.prepareStatement("INSERT INTO asistencias (persona_id, fecha, hora_entrada, hora_salida, estado) VALUES (?, ?, ?, ?, ?)")) {
                 psInsert.setInt(1, personaId);
-                psInsert.setDate(2, java.sql.Date.valueOf(fechaManual));
-                psInsert.setTime(3, java.sql.Time.valueOf(entradaManual + ":00"));
-                psInsert.setTime(4, java.sql.Time.valueOf(salidaManual + ":00"));
+                psInsert.setDate(2, java.sql.Date.valueOf(zdtEntrada.toLocalDate()));
+                psInsert.setTime(3, java.sql.Time.valueOf(zdtEntrada.toLocalTime()));
+                psInsert.setTime(4, java.sql.Time.valueOf(zdtSalida.toLocalTime()));
                 psInsert.setString(5, estadoManual);
                 psInsert.executeUpdate();
                 mensajeAlerta = "<div class='alert alert-success' style='margin-bottom:20px;'>¡Asistencia manual registrada con éxito!</div>";
@@ -131,7 +141,6 @@ try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6
         }
         .btn-cancelar-rojo:hover { transform: scale(1.03); color: white; text-decoration: none; }
 
-        /* Estilo específico para el botón de eliminar fila en la tabla */
         .btn-eliminar-tabla {
             background: linear-gradient(35deg, #f74040, #f50404);
             border: none;
@@ -321,10 +330,6 @@ finally {
               <div class="form-group">
                   <label>Hora de Salida:</label>
                   <input type="time" name="salida" class="form-control" required>
-              </div>
-              <div class="form-group">
-                  <label>Horas Trabajadas:</label>
-                  <input type="text" name="horas_trabajadas" class="form-control" required placeholder="Ej: 8h o 7h 30m">
               </div>
               <div class="form-group">
                   <label>Estado:</label>
