@@ -17,28 +17,16 @@ String ciUsuario = (String) session.getAttribute("ci");
 String url = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require";
 String mensajeAlerta = "";
 
-// Lógica para procesar el registro manual (si se envía el formulario)
-if ("POST".equalsIgnoreCase(request.getMethod()) && "registrar_manual".equals(request.getParameter("accion"))) {
-    String ciManual = request.getParameter("ci");
-    String fechaManual = request.getParameter("fecha");
-    String entradaManual = request.getParameter("entrada");
-    String salidaManual = request.getParameter("salida");
-    String horasTrabajadasManual = request.getParameter("horas_trabajadas");
-    String estadoManual = request.getParameter("estado");
+try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6rt8OdayAHcm")) {
+    conReg.createStatement().execute("SET TIME ZONE 'America/Asuncion'");
 
-    try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6rt8OdayAHcm")) {
-        conReg.createStatement().execute("SET TIME ZONE 'America/Asuncion'");
-        
-        // Buscamos la hora oficial y tolerancia para validar también en el servidor por seguridad
-        LocalTime horaOficialDb = LocalTime.of(8, 0);
-        int toleranciaDb = 0;
-        try (PreparedStatement psConf = conReg.prepareStatement("SELECT hora_entrada, tolerancia_minutos FROM configuracion_horario LIMIT 1");
-             ResultSet rsConf = psConf.executeQuery()) {
-            if (rsConf.next()) {
-                horaOficialDb = rsConf.getTime("hora_entrada").toLocalTime();
-                toleranciaDb = rsConf.getInt("tolerancia_minutos");
-            }
-        }
+    // Lógica para procesar el registro manual
+    if ("POST".equalsIgnoreCase(request.getMethod()) && "registrar_manual".equals(request.getParameter("accion"))) {
+        String ciManual = request.getParameter("ci");
+        String fechaManual = request.getParameter("fecha");
+        String entradaManual = request.getParameter("entrada");
+        String salidaManual = request.getParameter("salida");
+        String estadoManual = request.getParameter("estado");
 
         int personaId = -1;
         try (PreparedStatement psPersona = conReg.prepareStatement("SELECT id FROM personas WHERE ci = ?")) {
@@ -63,9 +51,18 @@ if ("POST".equalsIgnoreCase(request.getMethod()) && "registrar_manual".equals(re
         } else {
             mensajeAlerta = "<div class='alert alert-danger' style='margin-bottom:20px;'>Error: No se encontró ninguna persona registrada con ese CI.</div>";
         }
-    } catch (Exception e) {
-        mensajeAlerta = "<div class='alert alert-danger' style='margin-bottom:20px;'>Error al registrar: " + e.getMessage() + "</div>";
+    } 
+    // Lógica para eliminar un registro de asistencia (Solo Admin)
+    else if ("POST".equalsIgnoreCase(request.getMethod()) && "eliminar_asistencia".equals(request.getParameter("accion")) && "admin".equals(rol)) {
+        int idAsistenciaDel = Integer.parseInt(request.getParameter("id_asistencia"));
+        try (PreparedStatement psDel = conReg.prepareStatement("DELETE FROM asistencias WHERE id = ?")) {
+            psDel.setInt(1, idAsistenciaDel);
+            psDel.executeUpdate();
+            mensajeAlerta = "<div class='alert alert-success' style='margin-bottom:20px;'>Registro de asistencia eliminado con éxito.</div>";
+        }
     }
+} catch (Exception e) {
+    mensajeAlerta = "<div class='alert alert-danger' style='margin-bottom:20px;'>Error en la operación: " + e.getMessage() + "</div>";
 }
 %>
 
@@ -133,6 +130,20 @@ if ("POST".equalsIgnoreCase(request.getMethod()) && "registrar_manual".equals(re
             transition: transform 0.3s ease;
         }
         .btn-cancelar-rojo:hover { transform: scale(1.03); color: white; text-decoration: none; }
+
+        /* Estilo específico para el botón de eliminar fila en la tabla */
+        .btn-eliminar-tabla {
+            background: linear-gradient(35deg, #f74040, #f50404);
+            border: none;
+            border-radius: 20px;
+            padding: 6px 14px;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+        .btn-eliminar-tabla:hover { transform: scale(1.05); color: white; }
     </style>
 </head>
 <body>
@@ -189,6 +200,7 @@ try {
             <tr>
                 <th>id</th><th>nombre</th><th>ci</th><th>fecha</th><th>entrada</th>
                 <th>salida</th><th>horas trabajadas</th><th>minutos tardanza</th><th>estado</th>
+                <% if ("admin".equals(rol)) { %><th>acciones</th><% } %>
             </tr>
         </thead>
         <tbody>
@@ -196,6 +208,7 @@ try {
     boolean hay = false;
     while (rs.next()) {
         hay = true;
+        int idAsistencia = rs.getInt("id");
         Time horaEntradaDb = rs.getTime("hora_entrada");
         Time horaSalidaDb = rs.getTime("hora_salida");
         long minutosTardanza = 0;
@@ -231,7 +244,7 @@ try {
         }
 %>
             <tr>
-                <td><%= rs.getInt("id") %></td>
+                <td><%= idAsistencia %></td>
                 <td><%= rs.getString("nombre") %></td>
                 <td><%= rs.getString("ci") %></td>
                 <td><%= rs.getDate("fecha") %></td>
@@ -244,10 +257,24 @@ try {
                         <%= minutosTardanza > 0 ? "Tardanza" : "Completado" %>
                     </span>
                 </td>
+                <% if ("admin".equals(rol)) { %>
+                <td>
+                    <form method="POST" onsubmit="return confirm('¿Está seguro de eliminar este registro de asistencia?');" style="margin: 0;">
+                        <input type="hidden" name="accion" value="eliminar_asistencia">
+                        <input type="hidden" name="id_asistencia" value="<%= idAsistencia %>">
+                        <button type="submit" class="btn-eliminar-tabla">Eliminar</button>
+                    </form>
+                </td>
+                <% } %>
             </tr>
 <%
     }
-    if (!hay) { %> <tr><td colspan="9" class="sin-registros">No hay accesos registrados para mostrar.</td></tr> <% } %>
+    if (!"admin".equals(rol)) {
+        if (!hay) { %> <tr><td colspan="9" class="sin-registros">No hay accesos registrados para mostrar.</td></tr> <% }
+    } else {
+        if (!hay) { %> <tr><td colspan="10" class="sin-registros">No hay accesos registrados para mostrar.</td></tr> <% }
+    }
+%>
         </tbody>
     </table>
 
@@ -289,7 +316,6 @@ finally {
               </div>
               <div class="form-group">
                   <label>Hora de Entrada:</label>
-                  <!-- Añadimos un id y evento onchange para validar el estado automáticamente -->
                   <input type="time" id="inputEntrada" name="entrada" class="form-control" required onchange="validarEstadoAsistencia()">
               </div>
               <div class="form-group">
@@ -323,8 +349,7 @@ finally {
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Hora oficial y tolerancia extraídas de la base de datos para la validación del lado del cliente
-const HORA_OFICIAL_STR = "<%= horaOficial.toString() %>"; // ej: "08:00"
+const HORA_OFICIAL_STR = "<%= horaOficial.toString() %>"; 
 const TOLERANCIA_MINUTOS = <%= tolerancia %>;
 
 function validarEstadoAsistencia() {
@@ -334,11 +359,9 @@ function validarEstadoAsistencia() {
 
     if (!inputEntrada) return;
 
-    // Convertir la hora oficial a minutos totales desde medianoche
     const [hOficial, mOficial] = HORA_OFICIAL_STR.split(':').map(Number);
     const totalMinutosOficiales = (hOficial * 60) + mOficial + TOLERANCIA_MINUTOS;
 
-    // Convertir la hora ingresada a minutos totales desde medianoche
     const [hIngresada, mIngresada] = inputEntrada.split(':').map(Number);
     const totalMinutosIngresados = (hIngresada * 60) + mIngresada;
 
@@ -347,14 +370,12 @@ function validarEstadoAsistencia() {
     }
 
     if (totalMinutosIngresados <= totalMinutosOficiales) {
-        // Si ingresó a la hora o antes, NO puede ser Tardanza ni Ausente
         selectEstado.value = "Completado";
         selectEstado.querySelector("option[value='Tardanza']").disabled = true;
         selectEstado.querySelector("option[value='Ausente']").disabled = true;
         aviso.style.display = "block";
         aviso.innerText = "ℹ️ Como la entrada está dentro de la hora permitida o tolerancia, el estado se fija automáticamente como Completado.";
     } else {
-        // Si ingresó tarde, se fuerza a Tardanza (permitiendo cambiar a Ausente si se desea)
         selectEstado.value = "Tardanza";
         selectEstado.querySelector("option[value='Completado']").disabled = true;
         aviso.style.display = "block";
