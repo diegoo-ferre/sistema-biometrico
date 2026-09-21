@@ -44,11 +44,14 @@ try {
     Class.forName("org.postgresql.Driver");
     con = DriverManager.getConnection("jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require", "neondb_owner", "npg_6rt8OdayAHcm");
 
-    // Lógica para eliminar el periodo completo
+    // Lógica para eliminar el período completo basándose en las columnas mes y anio
     if ("POST".equalsIgnoreCase(request.getMethod()) && "eliminar_periodo".equals(request.getParameter("accion"))) {
-        ps = con.prepareStatement("DELETE FROM salarios WHERE EXTRACT(MONTH FROM fecha_registro) = ? AND EXTRACT(YEAR FROM fecha_registro) = ?");
-        ps.setInt(1, Integer.parseInt(request.getParameter("mes")));
-        ps.setInt(2, Integer.parseInt(request.getParameter("anio")));
+        int mVal = Integer.parseInt(request.getParameter("mes"));
+        int aVal = Integer.parseInt(request.getParameter("anio"));
+        
+        ps = con.prepareStatement("DELETE FROM salarios WHERE mes = ? AND anio = ?");
+        ps.setInt(1, mVal);
+        ps.setInt(2, aVal);
         ps.executeUpdate();
         ps.close();
         out.println("<div class='alert alert-success'>Período eliminado correctamente.</div>");
@@ -63,13 +66,13 @@ try {
         </thead>
         <tbody>
         <%
-            // Consulta todos los meses y años existentes en la tabla salarios
             Statement st = con.createStatement();
-            rs = st.executeQuery("SELECT DISTINCT EXTRACT(MONTH FROM fecha_registro) as mes, EXTRACT(YEAR FROM fecha_registro) as anio FROM salarios ORDER BY anio DESC, mes DESC");
+            // Agrupamos directamente por las columnas mes y anio de la tabla salarios
+            rs = st.executeQuery("SELECT DISTINCT mes, anio FROM salarios WHERE mes IS NOT NULL AND anio IS NOT NULL ORDER BY anio DESC, mes DESC");
             
             while (rs.next()) {
-                int mes = (int) rs.getDouble("mes");
-                int anio = (int) rs.getDouble("anio");
+                int mes = rs.getInt("mes");
+                int anio = rs.getInt("anio");
         %>
             <tr>
                 <td><%= mes %></td>
