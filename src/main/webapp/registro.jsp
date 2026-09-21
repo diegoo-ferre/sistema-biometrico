@@ -20,13 +20,12 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
     } else if (fotos[0] == null || fotos[0].isEmpty()) {
         mensaje = "Debe capturar las 5 fotos.";
     } else {
-        String url = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require";
+        // Conexión con la zona horaria forzada para corregir la hora
+        String url = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&options=-c%20timezone=America/Asuncion";
         String user = "neondb_owner";
         String pass = "npg_6rt8OdayAHcm";
         
-        // SQL 1: Guardar persona con correo, telefono y direccion
         String sqlPersona = "INSERT INTO personas(nombre, ci, correo, telefono, direccion, fecha_registro, foto1, foto2, foto3, foto4, foto5) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)";
-        // SQL 2: Crear usuario (Usuario = Nombre, Password = CI)
         String sqlUsuario = "INSERT INTO usuarios(usuario, password, rol, ci) VALUES (?, ?, 'empleado', ?)";
 
         try {
