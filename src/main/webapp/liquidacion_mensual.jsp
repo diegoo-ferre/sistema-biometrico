@@ -125,6 +125,9 @@ if (session.getAttribute("usuario") == null) {
         <input type="hidden" name="sueldo_base" value="<%= sueldoBase %>">
         <input type="hidden" name="monto_descuento" value="<%= totalDescuentos %>">
         <input type="hidden" name="sueldo_final" value="<%= salarioFinal %>">
+        <!-- AGREGADO PARA QUE GUARDE EL MES Y AÑO CORRECTO DE LA PANTALLA -->
+        <input type="hidden" name="mes" value="<%= mesSeleccionado %>">
+        <input type="hidden" name="anio" value="<%= anioSeleccionado %>">
         
         <button type="submit" class="btn" style="background: linear-gradient(40deg, #4225a3, #000738); color: white; border: none; padding: 6px 20px; border-radius: 15px; font-weight: bold;">Guardar</button>
     </form>
