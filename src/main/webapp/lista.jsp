@@ -47,7 +47,7 @@ String mensaje = null;
 Connection con = null;
 try {
     Class.forName("org.postgresql.Driver");
-    // Conexión con la zona horaria forzada para corregir la hora al mostrarla
+    // Conexión con la zona horaria forzada
     con = DriverManager.getConnection("jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&options=-c%20timezone=America/Asuncion", "neondb_owner", "npg_6rt8OdayAHcm");
     
     if ("POST".equalsIgnoreCase(request.getMethod())) {
@@ -70,6 +70,7 @@ try {
 <%
     ResultSet rs = con.createStatement().executeQuery("select * from personas order by id desc");
     SimpleDateFormat formato = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+    formato.setTimeZone(java.util.TimeZone.getTimeZone("America/Asuncion")); // <--- Forzamos la zona horaria local aquí
     while (rs.next()) {
         String correoVal = rs.getString("correo") != null ? rs.getString("correo") : "-";
         String telefonoVal = rs.getString("telefono") != null ? rs.getString("telefono") : "-";
