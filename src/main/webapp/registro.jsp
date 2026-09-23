@@ -1,5 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
+<%@ page import="java.time.LocalDateTime" %>
 <%
 String mensaje = "";
 
@@ -20,12 +21,16 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
     } else if (fotos[0] == null || fotos[0].isEmpty()) {
         mensaje = "Debe capturar las 5 fotos.";
     } else {
-        // Conexión con la zona horaria forzada para corregir la hora
-        String url = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require&options=-c%20timezone=America/Asuncion";
+        String url = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require";
         String user = "neondb_owner";
         String pass = "npg_6rt8OdayAHcm";
         
-        String sqlPersona = "INSERT INTO personas(nombre, ci, correo, telefono, direccion, fecha_registro, foto1, foto2, foto3, foto4, foto5) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?, ?)";
+        // Obtenemos la fecha y hora local exacta desde Java para evitar desfases horarios en Render/Neon
+        LocalDateTime fechaLocal = LocalDateTime.now();
+
+        // SQL 1: Guardar persona incluyendo la fecha local generada en Java
+        String sqlPersona = "INSERT INTO personas(nombre, ci, correo, telefono, direccion, fecha_registro, foto1, foto2, foto3, foto4, foto5) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        // SQL 2: Crear usuario (Usuario = Nombre, Password = CI)
         String sqlUsuario = "INSERT INTO usuarios(usuario, password, rol, ci) VALUES (?, ?, 'empleado', ?)";
 
         try {
@@ -41,11 +46,12 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
                     psP.setString(3, correo);
                     psP.setString(4, telefono);
                     psP.setString(5, direccion);
-                    psP.setString(6, fotos[0]);
-                    psP.setString(7, fotos[1]);
-                    psP.setString(8, fotos[2]);
-                    psP.setString(9, fotos[3]);
-                    psP.setString(10, fotos[4]);
+                    psP.setObject(6, fechaLocal);
+                    psP.setString(7, fotos[0]);
+                    psP.setString(8, fotos[1]);
+                    psP.setString(9, fotos[2]);
+                    psP.setString(10, fotos[3]);
+                    psP.setString(11, fotos[4]);
                     psP.executeUpdate();
 
                     psU.setString(1, nombre); 
