@@ -39,21 +39,16 @@ try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6
         }
 
         if (personaId != -1) {
-            // CORRECCIÓN: Parseamos usando la zona horaria local de Paraguay para evitar el desfase de 3 horas
-            ZoneId zonaParaguay = ZoneId.of("America/Asuncion");
-            
+            // CORRECCIÓN: Restamos 3 horas directamente para contrarrestar el desfase del servidor en la nube
             LocalDate fechaParsed = LocalDate.parse(fechaManual);
-            LocalTime entradaParsed = LocalTime.parse(entradaManual);
-            LocalTime salidaParsed = LocalTime.parse(salidaManual);
-
-            ZonedDateTime zdtEntrada = ZonedDateTime.of(fechaParsed, entradaParsed, zonaParaguay);
-            ZonedDateTime zdtSalida = ZonedDateTime.of(fechaParsed, salidaParsed, zonaParaguay);
+            LocalTime entradaParsed = LocalTime.parse(entradaManual).minusHours(3);
+            LocalTime salidaParsed = LocalTime.parse(salidaManual).minusHours(3);
 
             try (PreparedStatement psInsert = conReg.prepareStatement("INSERT INTO asistencias (persona_id, fecha, hora_entrada, hora_salida, estado) VALUES (?, ?, ?, ?, ?)")) {
                 psInsert.setInt(1, personaId);
-                psInsert.setDate(2, java.sql.Date.valueOf(zdtEntrada.toLocalDate()));
-                psInsert.setTime(3, java.sql.Time.valueOf(zdtEntrada.toLocalTime()));
-                psInsert.setTime(4, java.sql.Time.valueOf(zdtSalida.toLocalTime()));
+                psInsert.setDate(2, java.sql.Date.valueOf(fechaParsed));
+                psInsert.setTime(3, java.sql.Time.valueOf(entradaParsed));
+                psInsert.setTime(4, java.sql.Time.valueOf(salidaParsed));
                 psInsert.setString(5, estadoManual);
                 psInsert.executeUpdate();
                 mensajeAlerta = "<div class='alert alert-success' style='margin-bottom:20px;'>¡Asistencia manual registrada con éxito!</div>";
