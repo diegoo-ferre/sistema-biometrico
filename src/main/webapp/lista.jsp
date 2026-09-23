@@ -82,7 +82,7 @@ try {
                 <td><%= correoVal %></td>
                 <td><%= telefonoVal %></td>
                 <td><%= direccionVal %></td>
-                <td><%= formato.format(rs.getTimestamp("fecha_registro")) %></td>
+                <td><%= rs.getString("fecha_registro") %></td>
                 <td>
                     <div style="display: flex; flex-wrap: wrap; justify-content: center; max-width: 220px; margin: 0 auto;">
                         <% for(int i=1; i<=5; i++){ if(rs.getString("foto"+i)!=null){ %><img src="<%= rs.getString("foto"+i) %>" class="foto-mini"><% }} %>
