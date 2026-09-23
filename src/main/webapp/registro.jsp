@@ -1,7 +1,6 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
-<%@ page import="java.time.ZonedDateTime" %>
-<%@ page import="java.time.ZoneId" %>
+<%@ page import="java.time.LocalDateTime" %>
 <%@ page import="java.time.format.DateTimeFormatter" %>
 <%
 String mensaje = "";
@@ -27,12 +26,12 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
         String user = "neondb_owner";
         String pass = "npg_6rt8OdayAHcm";
         
-        // Obtenemos la hora exacta en Asunción y la formateamos directamente como texto plano
-        ZonedDateTime fechaAsuncion = ZonedDateTime.now(ZoneId.of("America/Asuncion"));
+        // Solución definitiva: Tomamos la hora actual del servidor y le restamos exactamente 3 horas por fuerza bruta
+        LocalDateTime horaLocalReal = LocalDateTime.now().minusHours(3);
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-        String fechaTexto = fechaAsuncion.format(formatter);
+        String fechaTexto = horaLocalReal.format(formatter);
 
-        // SQL 1: Guardar persona enviando la fecha ya convertida en texto plano
+        // SQL 1: Guardar persona enviando la fecha corregida en texto plano
         String sqlPersona = "INSERT INTO personas(nombre, ci, correo, telefono, direccion, fecha_registro, foto1, foto2, foto3, foto4, foto5) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         // SQL 2: Crear usuario (Usuario = Nombre, Password = CI)
         String sqlUsuario = "INSERT INTO usuarios(usuario, password, rol, ci) VALUES (?, ?, 'empleado', ?)";
@@ -50,7 +49,7 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
                     psP.setString(3, correo);
                     psP.setString(4, telefono);
                     psP.setString(5, direccion);
-                    psP.setString(6, fechaTexto); // <--- Guardamos el texto plano directamente
+                    psP.setString(6, fechaTexto); // <--- Guardamos el texto plano exacto
                     psP.setString(7, fotos[0]);
                     psP.setString(8, fotos[1]);
                     psP.setString(9, fotos[2]);
