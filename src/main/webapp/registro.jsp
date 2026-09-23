@@ -1,6 +1,7 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
 <%@ page import="java.sql.*" %>
 <%@ page import="java.time.LocalDateTime" %>
+<%@ page import="java.time.ZoneId" %>
 <%
 String mensaje = "";
 
@@ -25,10 +26,10 @@ if ("POST".equalsIgnoreCase(request.getMethod())) {
         String user = "neondb_owner";
         String pass = "npg_6rt8OdayAHcm";
         
-        // Obtenemos la fecha y hora local exacta desde Java para evitar desfases horarios en Render/Neon
-        LocalDateTime fechaLocal = LocalDateTime.now();
+        // Forzamos la hora exacta de tu zona horaria local ignorando la hora del servidor de Render
+        LocalDateTime fechaLocal = LocalDateTime.now(ZoneId.of("America/Asuncion"));
 
-        // SQL 1: Guardar persona incluyendo la fecha local generada en Java
+        // SQL 1: Guardar persona incluyendo la fecha local exacta
         String sqlPersona = "INSERT INTO personas(nombre, ci, correo, telefono, direccion, fecha_registro, foto1, foto2, foto3, foto4, foto5) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         // SQL 2: Crear usuario (Usuario = Nombre, Password = CI)
         String sqlUsuario = "INSERT INTO usuarios(usuario, password, rol, ci) VALUES (?, ?, 'empleado', ?)";
