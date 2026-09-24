@@ -38,45 +38,50 @@ if (session.getAttribute("usuario") == null) {
         Class.forName("org.postgresql.Driver");
         con = DriverManager.getConnection("jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require", "neondb_owner", "npg_6rt8OdayAHcm");
         
-        // Agurngaten wenno update dagiti horario ken ti maymaysa a tolerancia
         if ("POST".equalsIgnoreCase(request.getMethod())) {
-            int turnoId = Integer.parseInt(request.getParameter("turno_id"));
+            String turnoIdStr = request.getParameter("turno_id");
             String horaEntrada = request.getParameter("hora_entrada");
             String horaSalida = request.getParameter("hora_salida");
-            int tol = Integer.parseInt(request.getParameter("tolerancia"));
+            String toleranciaStr = request.getParameter("tolerancia");
             
-            // 1. Update ti horario ti pinili a turno
-            PreparedStatement ps = con.prepareStatement("UPDATE turnos SET hora_inicio = ?, hora_fin = ? WHERE id = ?");
-            ps.setTime(1, java.sql.Time.valueOf(horaEntrada.length() == 5 ? horaEntrada + ":00" : horaEntrada));
-            ps.setTime(2, java.sql.Time.valueOf(horaSalida.length() == 5 ? horaSalida + ":00" : horaSalida));
-            ps.setInt(3, turnoId);
-            ps.executeUpdate();
-            ps.close();
+            if(turnoIdStr != null && !turnoIdStr.isEmpty()) {
+                int turnoId = Integer.parseInt(turnoIdStr);
+                
+                // 1. Actualizar las horas del turno específico elegido
+                PreparedStatement ps = con.prepareStatement("UPDATE turnos SET hora_inicio = ?, hora_fin = ? WHERE id = ?");
+                ps.setTime(1, java.sql.Time.valueOf(horaEntrada.length() == 5 ? horaEntrada + ":00" : horaEntrada));
+                ps.setTime(2, java.sql.Time.valueOf(horaSalida.length() == 5 ? horaSalida + ":00" : horaSalida));
+                ps.setInt(3, turnoId);
+                ps.executeUpdate();
+                ps.close();
 
-            // 2. Update wenno i-save ti maymaysa a tolerancia iti tabla a pangidapotan (kas ti configuracion_horario)
-            PreparedStatement psTol = con.prepareStatement("UPDATE configuracion_horario SET tolerancia_minutos = ?");
-            psTol.setInt(1, tol);
-            psTol.executeUpdate();
-            psTol.close();
+                // 2. Actualizar la tolerancia global compartida
+                if(toleranciaStr != null && !toleranciaStr.isEmpty()) {
+                    PreparedStatement psTol = con.prepareStatement("UPDATE configuracion_horario SET tolerancia_minutos = ?");
+                    psTol.setInt(1, Integer.parseInt(toleranciaStr));
+                    psTol.executeUpdate();
+                    psTol.close();
+                }
 
-            out.println("<div class='alert alert-success text-center'>Configuración guardada correctamente</div>");
+                out.println("<div class='alert alert-success text-center'>¡Configuración del turno actualizada con éxito!</div>");
+            }
         }
     } catch(Exception e) { 
-        out.println("<div class='alert alert-danger'>Error: " + e.getMessage() + "</div>"); 
+        out.println("<div class='alert alert-danger'>Error al actualizar: " + e.getMessage() + "</div>"); 
     }
     %>
 
     <form method="post" id="formHorario">
         <div class="form-group">
-            <label>Seleccionar Turno:</label>
+            <label>Seleccionar Turno a Configurar:</label>
             <select name="turno_id" id="turno_id" class="form-control" required>
                 <option value="">-- Seleccione un Turno --</option>
                 <%
                 try {
                     Statement st = con.createStatement();
-                    ResultSet rs = st.executeQuery("SELECT id, nombre FROM turnos ORDER BY id");
+                    ResultSet rs = st.executeQuery("SELECT id, nombre, hora_inicio, hora_fin FROM turnos ORDER BY id");
                     while(rs.next()) {
-                        out.println("<option value='" + rs.getInt("id") + "'>" + rs.getString("nombre") + "</option>");
+                        out.println("<option value='" + rs.getInt("id") + "'>" + rs.getString("nombre") + " (" + rs.getTime("hora_inicio") + " - " + rs.getTime("hora_fin") + ")</option>");
                     }
                     rs.close();
                     st.close();
@@ -86,19 +91,19 @@ if (session.getAttribute("usuario") == null) {
         </div>
 
         <div class="form-group">
-            <label>Hora de Entrada Oficial:</label>
+            <label>Nueva Hora de Entrada Oficial:</label>
             <input type="time" name="hora_entrada" id="hora_entrada" class="form-control" required>
         </div>
         <div class="form-group">
-            <label>Hora de Salida Oficial:</label>
+            <label>Nueva Hora de Salida Oficial:</label>
             <input type="time" name="hora_salida" id="hora_salida" class="form-control" required>
         </div>
         <div class="form-group">
-            <label>Minutos de Tolerancia:</label>
-            <input type="number" name="tolerancia" id="tolerancia" class="form-control" required>
+            <label>Minutos de Tolerancia</label>
+            <input type="number" name="tolerancia" id="tolerancia" class="form-control" value="10" required>
         </div>
         
-        <button type="submit" class="btn-guardar">Guardar Configuración</button>
+        <button type="submit" class="btn-guardar">Guardar Cambios del Turno</button>
         <a href="admin.jsp" class="btn-volver">Volver al inicio</a>
     </form>
 </div>
