@@ -95,7 +95,7 @@ const turnoSelect = document.getElementById("turnoSelect");
 // Coordenadas del lugar de trabajo permitidas
 const LATITUD_DESTINO = -25.339111;
 const LONGITUD_DESTINO = -57.523444;
-const RADIO_MAXIMO_KM = 1.0; // 1 kilómetro a la redonda
+const RADIO_MAXIMO_KM = 1.0; 
 
 let ubicacionActual = null;
 
@@ -133,9 +133,8 @@ if (navigator.geolocation) {
     estadoGps.innerText = "el navegador no soporta geolocalización.";
 }
 
-// Función matemática de Haversine para calcular distancia en kilómetros entre dos coordenadas
 function calcularDistancia(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radio de la tierra en km
+    const R = 6371; 
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
@@ -163,7 +162,6 @@ async function verificarRostro() {
         return;
     }
 
-    // Validar la distancia antes de permitir el POST al servidor
     const distanciaFinal = calcularDistancia(ubicacionActual.lat, ubicacionActual.lon, LATITUD_DESTINO, LONGITUD_DESTINO);
     if (distanciaFinal > RADIO_MAXIMO_KM) {
         resultadoReconocimiento.innerHTML = '<div class="alert alert-danger"><strong>Acceso denegado:</strong> Estás fuera del área permitida para marcar asistencia (más de 1 km de distancia).</div>';
@@ -180,7 +178,8 @@ async function verificarRostro() {
     resultadoReconocimiento.innerHTML = '<div class="alert alert-info">verificando ubicación y rostro...</div>';
 
     try {
-        const respuesta = await fetch("https://reconocimiento-flask-2.onrender.com/reconocer", {
+        // REEMPLAZA ESTA URL CON TU ENLACE ACTIVO DE FLASK EN RENDER
+        const respuesta = await fetch("https://TU-URL-ACTIVA-DE-FLASK.onrender.com/reconocer", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ foto: imagenBase64, turno_id: turnoSeleccionado })
