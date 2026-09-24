@@ -93,8 +93,8 @@ const resultadoReconocimiento = document.getElementById("resultadoReconocimiento
 const turnoSelect = document.getElementById("turnoSelect");
 
 // Coordenadas del lugar de trabajo permitidas
-const LATITUD_DESTINO = -25.339111;
-const LONGITUD_DESTINO = -57.523444;
+const LATITUD_DESTINO = -25.405024;
+const LONGITUD_DESTINO = -57.291141;
 const RADIO_MAXIMO_KM = 1.0; 
 
 let ubicacionActual = null;
