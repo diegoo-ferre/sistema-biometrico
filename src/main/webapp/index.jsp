@@ -1,4 +1,5 @@
 <%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ page import="java.sql.*" %>
 <%
 response.setHeader("Cache-Control","no-cache, no-store, must-revalidate");
 response.setHeader("Pragma","no-cache");
@@ -27,6 +28,9 @@ String rol = (String) session.getAttribute("rol");
         .camera-box { margin: 0 auto 15px auto; width: 100%; max-width: 520px; border-radius: 22px; overflow: hidden; border: 3px solid rgba(255,255,255,0.08); box-shadow: 0 8px 25px rgba(0,0,0,0.5); background: #000; }
         video { width: 100%; display: block; }
         .estado-camara, .estado-gps { margin-top: 5px; margin-bottom: 15px; font-size: 14px; color: #cfd8dc; }
+        .form-group-turno { max-width: 360px; margin: 0 auto 15px auto; text-align: left; }
+        .form-control { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: white; border-radius: 15px; padding: 12px; }
+        .form-control option { background: #0b1f2a; color: white; }
         .btn-custom { display: block; width: 100%; max-width: 360px; margin: 12px auto; padding: 14px 20px; border: none; border-radius: 30px; color: white; font-size: 18px; font-weight: bold; text-decoration: none; transition: 0.3s ease; cursor: pointer; }
         .btn-custom:hover { transform: scale(1.03); color: white; text-decoration: none; }
         .btn-verificar { background: linear-gradient(70deg, #4225a3, #000738); }
@@ -46,6 +50,31 @@ String rol = (String) session.getAttribute("rol");
     <div class="estado-gps" id="estadoGps">obteniendo ubicación GPS...</div>
     <canvas id="canvas"></canvas>
 
+    <div class="form-group-turno">
+        <label for="turnoSelect"><strong>Seleccione su Turno:</strong></label>
+        <select id="turnoSelect" class="form-control" required>
+            <option value="">-- Seleccione un Turno --</option>
+            <%
+            Connection con = null;
+            try {
+                Class.forName("org.postgresql.Driver");
+                con = DriverManager.getConnection("jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require", "neondb_owner", "npg_6rt8OdayAHcm");
+                Statement st = con.createStatement();
+                ResultSet rs = st.executeQuery("SELECT id, nombre FROM turnos ORDER BY id");
+                while(rs.next()) {
+                    out.println("<option value='" + rs.getInt("id") + "'>" + rs.getString("nombre") + "</option>");
+                }
+                rs.close();
+                st.close();
+            } catch(Exception e) {
+                out.println("<option value=''>Error al cargar turnos</option>");
+            } finally {
+                if(con != null) con.close();
+            }
+            %>
+        </select>
+    </div>
+
     <button type="button" class="btn-custom btn-verificar" onclick="verificarRostro()">
         Verificar rostro
     </button>
@@ -61,6 +90,7 @@ const canvas = document.getElementById("canvas");
 const estadoCamara = document.getElementById("estadoCamara");
 const estadoGps = document.getElementById("estadoGps");
 const resultadoReconocimiento = document.getElementById("resultadoReconocimiento");
+const turnoSelect = document.getElementById("turnoSelect");
 
 // Coordenadas del lugar de trabajo permitidas
 const LATITUD_DESTINO = -25.339111;
@@ -122,6 +152,12 @@ async function verificarRostro() {
         return;
     }
 
+    if (!turnoSelect.value) {
+        alert("por favor, seleccione su turno antes de verificar.");
+        turnoSelect.focus();
+        return;
+    }
+
     if (!ubicacionActual) {
         alert("esperando señal de GPS. Asegúrate de dar permisos de ubicación a tu navegador.");
         return;
@@ -139,6 +175,7 @@ async function verificarRostro() {
     canvas.height = video.videoHeight;
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
     const imagenBase64 = canvas.toDataURL("image/jpeg", 0.4);
+    const turnoSeleccionado = turnoSelect.value;
 
     resultadoReconocimiento.innerHTML = '<div class="alert alert-info">verificando ubicación y rostro...</div>';
 
@@ -146,7 +183,7 @@ async function verificarRostro() {
         const respuesta = await fetch("https://reconocimiento-flask-2.onrender.com/reconocer", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ foto: imagenBase64 })
+            body: JSON.stringify({ foto: imagenBase64, turno_id: turnoSeleccionado })
         });
         const data = await respuesta.json();
         if (data.resultado === "permitido") {
@@ -155,6 +192,7 @@ async function verificarRostro() {
                     '<strong>¡Asistencia marcada con éxito!</strong><br><br>' +
                     '<strong>Nombre:</strong> ' + data.nombre + '<br>' +
                     '<strong>CI:</strong> ' + data.ci + '<br>' +
+                    '<strong>Turno:</strong> ' + turnoSelect.options[turnoSelect.selectedIndex].text + '<br>' +
                     '<strong>Estado:</strong> ' + data.asistencia + 
                 '</div>';
         } else if (data.resultado === "denegado") {
