@@ -179,7 +179,7 @@ async function verificarRostro() {
 
     try {
         // REEMPLAZA ESTA URL CON TU ENLACE ACTIVO DE FLASK EN RENDER
-        const respuesta = await fetch("https://TU-URL-ACTIVA-DE-FLASK.onrender.com/reconocer", {
+        const respuesta = await fetch("https://reconocimiento-flask-2.onrender.com/reconocer", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ foto: imagenBase64, turno_id: turnoSeleccionado })
