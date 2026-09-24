@@ -39,6 +39,7 @@ try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6
         String entradaManual = request.getParameter("entrada");
         String salidaManual = request.getParameter("salida");
         String estadoManual = request.getParameter("estado");
+        String turnoManualStr = request.getParameter("turno_id");
 
         int personaId = -1;
         try (PreparedStatement psPersona = conReg.prepareStatement("SELECT id FROM personas WHERE ci = ?")) {
@@ -50,22 +51,24 @@ try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6
             }
         }
 
-        if (personaId != -1) {
+        if (personaId != -1 && turnoManualStr != null && !turnoManualStr.isEmpty()) {
+            int turnoIdManual = Integer.parseInt(turnoManualStr);
             LocalDate fechaParsed = LocalDate.parse(fechaManual);
             LocalTime entradaParsed = LocalTime.parse(entradaManual).minusHours(3);
             LocalTime salidaParsed = LocalTime.parse(salidaManual).minusHours(3);
 
-            try (PreparedStatement psInsert = conReg.prepareStatement("INSERT INTO asistencias (persona_id, fecha, hora_entrada, hora_salida, estado) VALUES (?, ?, ?, ?, ?)")) {
+            try (PreparedStatement psInsert = conReg.prepareStatement("INSERT INTO asistencias (persona_id, fecha, hora_entrada, hora_salida, estado, turno_id) VALUES (?, ?, ?, ?, ?, ?)")) {
                 psInsert.setInt(1, personaId);
                 psInsert.setDate(2, java.sql.Date.valueOf(fechaParsed));
                 psInsert.setTime(3, java.sql.Time.valueOf(entradaParsed));
                 psInsert.setTime(4, java.sql.Time.valueOf(salidaParsed));
                 psInsert.setString(5, estadoManual);
+                psInsert.setInt(6, turnoIdManual);
                 psInsert.executeUpdate();
                 mensajeAlerta = "<div class='alert alert-success' style='margin-bottom:20px;'>¡Asistencia manual registrada con éxito!</div>";
             }
         } else {
-            mensajeAlerta = "<div class='alert alert-danger' style='margin-bottom:20px;'>Error: No se encontró ninguna persona registrada con ese CI.</div>";
+            mensajeAlerta = "<div class='alert alert-danger' style='margin-bottom:20px;'>Error: No se encontró la persona con ese CI o no seleccionó un turno válido.</div>";
         }
     } 
     // Lógica para eliminar un registro de asistencia (Solo Admin)
@@ -193,8 +196,7 @@ Connection con = null;
 PreparedStatement ps = null;
 ResultSet rs = null;
 ResultSet rsConfig = null;
-LocalTime horaOficial = LocalTime.of(8, 0); 
-int tolerancia = 0;
+int tolerancia = 10; // Valor por defecto
 String nombreEmpleado = "";
 String ciEmpleado = "";
 
@@ -203,11 +205,10 @@ try {
     con = DriverManager.getConnection(url, "neondb_owner", "npg_6rt8OdayAHcm");
     con.createStatement().execute("SET TIME ZONE 'America/Asuncion'");
 
-    // Configuración de horario y tolerancia
-    ps = con.prepareStatement("SELECT hora_entrada, tolerancia_minutos FROM configuracion_horario LIMIT 1");
+    // Obtener la tolerancia global en minutos desde configuracion_horario
+    ps = con.prepareStatement("SELECT tolerancia_minutos FROM configuracion_horario LIMIT 1");
     rsConfig = ps.executeQuery();
     if (rsConfig.next()) {
-        horaOficial = rsConfig.getTime("hora_entrada").toLocalTime();
         tolerancia = rsConfig.getInt("tolerancia_minutos");
     }
 
@@ -270,7 +271,6 @@ try {
         YearMonth ymTemp = YearMonth.of(anioFiltro, mesFiltro);
         for (int d = 1; d <= ymTemp.lengthOfMonth(); d++) {
             LocalDate fd = LocalDate.of(anioFiltro, mesFiltro, d);
-            // Cuenta como ausencia si pasó la fecha y no tiene registro cargado
             if (!fd.isAfter(hoyActual) && !mapaAsistenciasTemp.containsKey(fd)) {
                 totalAusencias++;
             }
@@ -294,6 +294,7 @@ try {
             <tr>
                 <th>Fecha</th>
                 <th>Día</th>
+                <th>Turno</th>
                 <th>Entrada</th>
                 <th>Salida</th>
                 <th>Horas Trabajadas</th>
@@ -305,9 +306,11 @@ try {
         <tbody>
 <%
     if (personaId != -1) {
-        // Mapear asistencias del mes seleccionado desde la BD
+        // Mapear asistencias del mes seleccionado haciendo JOIN con turnos para obtener el nombre y hora oficial del turno correspondiente
         HashMap<LocalDate, HashMap<String, Object>> mapaAsistencias = new HashMap<>();
-        String sqlAsis = "SELECT id, fecha, hora_entrada, hora_salida, estado FROM asistencias WHERE persona_id = ? AND EXTRACT(YEAR FROM fecha) = ? AND EXTRACT(MONTH FROM fecha) = ?";
+        String sqlAsis = "SELECT a.id, a.fecha, a.hora_entrada, a.hora_salida, a.estado, t.nombre as nombre_turno, t.hora_inicio " +
+                         "FROM asistencias a LEFT JOIN turnos t ON a.turno_id = t.id " +
+                         "WHERE a.persona_id = ? AND EXTRACT(YEAR FROM a.fecha) = ? AND EXTRACT(MONTH FROM a.fecha) = ?";
         try (PreparedStatement psAsis = con.prepareStatement(sqlAsis)) {
             psAsis.setInt(1, personaId);
             psAsis.setInt(2, anioFiltro);
@@ -320,12 +323,13 @@ try {
                     datos.put("entrada", rsA.getTime("hora_entrada"));
                     datos.put("salida", rsA.getTime("hora_salida"));
                     datos.put("estado", rsA.getString("estado"));
+                    datos.put("nombre_turno", rsA.getString("nombre_turno") != null ? rsA.getString("nombre_turno") : "General");
+                    datos.put("hora_inicio", rsA.getTime("hora_inicio"));
                     mapaAsistencias.put(f, datos);
                 }
             }
         }
 
-        // Determinar rango de días a mostrar (Desde el día 1 hasta el último día completo del mes seleccionado)
         YearMonth yearMonth = YearMonth.of(anioFiltro, mesFiltro);
         int diasEnMes = yearMonth.lengthOfMonth();
 
@@ -339,12 +343,15 @@ try {
             Time horaEntradaDb = registroAsis != null ? (Time) registroAsis.get("entrada") : null;
             Time horaSalidaDb = registroAsis != null ? (Time) registroAsis.get("salida") : null;
             Integer idAsistencia = registroAsis != null ? (Integer) registroAsis.get("id") : null;
+            String nombreTurnoReg = registroAsis != null ? (String) registroAsis.get("nombre_turno") : "-";
+            Time horaInicioTurnoReg = registroAsis != null ? (Time) registroAsis.get("hora_inicio") : null;
 
             long minutosTardanza = 0;
-            if (horaEntradaDb != null) {
+            if (horaEntradaDb != null && horaInicioTurnoReg != null) {
                 LocalTime entrada = horaEntradaDb.toLocalTime();
-                if (entrada.isAfter(horaOficial)) {
-                    long totalDiferencia = ChronoUnit.MINUTES.between(horaOficial, entrada);
+                LocalTime horaOficialTurno = horaInicioTurnoReg.toLocalTime();
+                if (entrada.isAfter(horaOficialTurno)) {
+                    long totalDiferencia = ChronoUnit.MINUTES.between(horaOficialTurno, entrada);
                     minutosTardanza = (totalDiferencia > tolerancia) ? (totalDiferencia - tolerancia) : 0;
                 }
             }
@@ -371,6 +378,7 @@ try {
             <tr>
                 <td><%= fechaDia %></td>
                 <td><%= nombreDiaSemana %></td>
+                <td><span class="badge badge-info" style="font-size: 12px;"><%= nombreTurnoReg %></span></td>
                 <td><%= horaEntradaDb != null ? horaEntradaDb : "-" %></td>
                 <td><%= horaSalidaDb != null ? horaSalidaDb : "-" %></td>
                 <td><%= !horasTrabajadasTexto.isEmpty() ? horasTrabajadasTexto : "-" %></td>
@@ -404,7 +412,7 @@ try {
         }
     } else {
 %>
-        <tr><td colspan="<%= "admin".equals(rol) ? 8 : 7 %>" class="sin-registros">No se encontró el empleado especificado.</td></tr>
+        <tr><td colspan="<%= "admin".equals(rol) ? 9 : 8 %>" class="sin-registros">No se encontró el empleado especificado.</td></tr>
 <%
     }
 %>
@@ -444,25 +452,39 @@ finally {
                   <input type="text" name="ci" class="form-control" required placeholder="Ej: 5023437">
               </div>
               <div class="form-group">
+                  <label class="text-white">Seleccionar Turno:</label>
+                  <select name="turno_id" class="form-control" required>
+                      <option value="">-- Seleccione un Turno --</option>
+                      <%
+                      try (Connection conT = DriverManager.getConnection(url, "neondb_owner", "npg_6rt8OdayAHcm");
+                           Statement stT = conT.createStatement();
+                           ResultSet rsT = stT.executeQuery("SELECT id, nombre, hora_inicio FROM turnos ORDER BY id")) {
+                          while(rsT.next()) {
+                              out.println("<option value='" + rsT.getInt("id") + "'>" + rsT.getString("nombre") + " (" + rsT.getTime("hora_inicio") + ")</option>");
+                          }
+                      } catch(Exception ex) {}
+                      %>
+                  </select>
+              </div>
+              <div class="form-group">
                   <label class="text-white">Fecha:</label>
                   <input type="date" name="fecha" class="form-control" required>
               </div>
               <div class="form-group">
                   <label class="text-white">Hora de Entrada:</label>
-                  <input type="time" id="inputEntrada" name="entrada" class="form-control" required onchange="validarEstadoAsistencia()">
+                  <input type="time" name="entrada" class="form-control" required>
               </div>
               <div class="form-group">
                   <label class="text-white">Hora de Salida:</label>
                   <input type="time" name="salida" class="form-control" required>
               </div>
               <div class="form-group">
-                  <label class="text-white">Estado:</label>
-                  <select id="selectEstado" name="estado" class="form-control">
+                  <label class="text-white">Estado Inicial:</label>
+                  <select name="estado" class="form-control">
                       <option value="Completado">Completado</option>
                       <option value="Tardanza">Tardanza</option>
                       <option value="Ausente">Ausente</option>
                   </select>
-                  <small id="avisoValidacion" class="form-text text-warning mt-1" style="display:none;"></small>
               </div>
           </div>
           <div class="modal-footer">
@@ -474,43 +496,8 @@ finally {
   </div>
 </div>
 
-<!-- Scripts y lógica de validación automática en JS -->
+<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-const HORA_OFICIAL_STR = "<%= horaOficial.toString() %>"; 
-const TOLERANCIA_MINUTOS = <%= tolerancia %>;
-
-function validarEstadoAsistencia() {
-    const inputEntrada = document.getElementById("inputEntrada").value;
-    const selectEstado = document.getElementById("selectEstado");
-    const aviso = document.getElementById("avisoValidacion");
-
-    if (!inputEntrada) return;
-
-    const [hOficial, mOficial] = HORA_OFICIAL_STR.split(':').map(Number);
-    const totalMinutosOficiales = (hOficial * 60) + mOficial + TOLERANCIA_MINUTOS;
-
-    const [hIngresada, mIngresada] = inputEntrada.split(':').map(Number);
-    const totalMinutosIngresados = (hIngresada * 60) + mIngresada;
-
-    for (let option of selectEstado.options) {
-        option.disabled = false;
-    }
-
-    if (totalMinutosIngresados <= totalMinutosOficiales) {
-        selectEstado.value = "Completado";
-        selectEstado.querySelector("option[value='Tardanza']").disabled = true;
-        selectEstado.querySelector("option[value='Ausente']").disabled = true;
-        aviso.style.display = "block";
-        aviso.innerText = "ℹ️ Como la entrada está dentro de la hora permitida o tolerancia, el estado se fija automáticamente como Completado.";
-    } else {
-        selectEstado.value = "Tardanza";
-        selectEstado.querySelector("option[value='Completado']").disabled = true;
-        aviso.style.display = "block";
-        aviso.innerText = "⚠️ La hora ingresada supera el límite permitido. El estado se ha ajustado a Tardanza.";
-    }
-}
-</script>
 </body>
 </html>
