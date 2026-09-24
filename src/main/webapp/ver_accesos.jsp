@@ -5,6 +5,8 @@
 <%@ page import="java.time.format.TextStyle" %>
 <%@ page import="java.util.Locale" %>
 <%@ page import="java.util.HashMap" %>
+<%@ page import="java.util.List" %>
+<%@ page import="java.util.ArrayList" %>
 
 <%
 // 🔐 Verificación de sesión
@@ -256,7 +258,7 @@ try {
     // Pre-cálculo de ausencias para mostrar el total en la cabecera de la tabla
     int totalAusencias = 0;
     if (personaId != -1) {
-        HashMap<LocalDate, HashMap<String, Object>> mapaAsistenciasTemp = new HashMap<>();
+        HashMap<LocalDate, Object> mapaAsistenciasTemp = new HashMap<>();
         String sqlAsisTemp = "SELECT fecha FROM asistencias WHERE persona_id = ? AND EXTRACT(YEAR FROM fecha) = ? AND EXTRACT(MONTH FROM fecha) = ?";
         try (PreparedStatement psAsisT = con.prepareStatement(sqlAsisTemp)) {
             psAsisT.setInt(1, personaId);
@@ -306,11 +308,12 @@ try {
         <tbody>
 <%
     if (personaId != -1) {
-        // Mapear asistencias del mes seleccionado haciendo JOIN con turnos para obtener el nombre y hora oficial del turno correspondiente
-        HashMap<LocalDate, HashMap<String, Object>> mapaAsistencias = new HashMap<>();
+        // Mapear asistencias usando una lista por fecha para soportar múltiples turnos diarios
+        HashMap<LocalDate, List<HashMap<String, Object>>> mapaAsistencias = new HashMap<>();
         String sqlAsis = "SELECT a.id, a.fecha, a.hora_entrada, a.hora_salida, a.estado, t.nombre as nombre_turno, t.hora_inicio " +
                          "FROM asistencias a LEFT JOIN turnos t ON a.turno_id = t.id " +
-                         "WHERE a.persona_id = ? AND EXTRACT(YEAR FROM a.fecha) = ? AND EXTRACT(MONTH FROM a.fecha) = ?";
+                         "WHERE a.persona_id = ? AND EXTRACT(YEAR FROM a.fecha) = ? AND EXTRACT(MONTH FROM a.fecha) = ? " +
+                         "ORDER BY a.fecha ASC, a.hora_entrada ASC";
         try (PreparedStatement psAsis = con.prepareStatement(sqlAsis)) {
             psAsis.setInt(1, personaId);
             psAsis.setInt(2, anioFiltro);
@@ -325,7 +328,8 @@ try {
                     datos.put("estado", rsA.getString("estado"));
                     datos.put("nombre_turno", rsA.getString("nombre_turno") != null ? rsA.getString("nombre_turno") : "General");
                     datos.put("hora_inicio", rsA.getTime("hora_inicio"));
-                    mapaAsistencias.put(f, datos);
+                    
+                    mapaAsistencias.computeIfAbsent(f, k -> new ArrayList<>()).add(datos);
                 }
             }
         }
@@ -338,42 +342,45 @@ try {
             String nombreDiaSemana = fechaDia.getDayOfWeek().getDisplayName(TextStyle.FULL, new Locale("es", "ES"));
             nombreDiaSemana = nombreDiaSemana.substring(0, 1).toUpperCase() + nombreDiaSemana.substring(1);
 
-            HashMap<String, Object> registroAsis = mapaAsistencias.get(fechaDia);
+            List<HashMap<String, Object>> listaRegistrosDia = mapaAsistencias.get(fechaDia);
             
-            Time horaEntradaDb = registroAsis != null ? (Time) registroAsis.get("entrada") : null;
-            Time horaSalidaDb = registroAsis != null ? (Time) registroAsis.get("salida") : null;
-            Integer idAsistencia = registroAsis != null ? (Integer) registroAsis.get("id") : null;
-            String nombreTurnoReg = registroAsis != null ? (String) registroAsis.get("nombre_turno") : "-";
-            Time horaInicioTurnoReg = registroAsis != null ? (Time) registroAsis.get("hora_inicio") : null;
+            if (listaRegistrosDia != null && !listaRegistrosDia.isEmpty()) {
+                // Iterar sobre cada turno registrado en este día
+                for (HashMap<String, Object> registroAsis : listaRegistrosDia) {
+                    Time horaEntradaDb = (Time) registroAsis.get("entrada");
+                    Time horaSalidaDb = (Time) registroAsis.get("salida");
+                    Integer idAsistencia = (Integer) registroAsis.get("id");
+                    String nombreTurnoReg = (String) registroAsis.get("nombre_turno");
+                    Time horaInicioTurnoReg = (Time) registroAsis.get("hora_inicio");
 
-            long minutosTardanza = 0;
-            if (horaEntradaDb != null && horaInicioTurnoReg != null) {
-                LocalTime entrada = horaEntradaDb.toLocalTime();
-                LocalTime horaOficialTurno = horaInicioTurnoReg.toLocalTime();
-                if (entrada.isAfter(horaOficialTurno)) {
-                    long totalDiferencia = ChronoUnit.MINUTES.between(horaOficialTurno, entrada);
-                    minutosTardanza = (totalDiferencia > tolerancia) ? (totalDiferencia - tolerancia) : 0;
-                }
-            }
+                    long minutosTardanza = 0;
+                    if (horaEntradaDb != null && horaInicioTurnoReg != null) {
+                        LocalTime entrada = horaEntradaDb.toLocalTime();
+                        LocalTime horaOficialTurno = horaInicioTurnoReg.toLocalTime();
+                        if (entrada.isAfter(horaOficialTurno)) {
+                            long totalDiferencia = ChronoUnit.MINUTES.between(horaOficialTurno, entrada);
+                            minutosTardanza = (totalDiferencia > tolerancia) ? (totalDiferencia - tolerancia) : 0;
+                        }
+                    }
 
-            String horasTrabajadasTexto = "";
-            if (horaEntradaDb != null && horaSalidaDb != null) {
-                LocalTime entrada = horaEntradaDb.toLocalTime();
-                LocalTime salida = horaSalidaDb.toLocalTime();
-                long totalMinutosTrabajados = ChronoUnit.MINUTES.between(entrada, salida);
-                if (totalMinutosTrabajados < 0) totalMinutosTrabajados = 0;
-                
-                long horasTotales = totalMinutosTrabajados / 60;
-                long minutosRestantes = totalMinutosTrabajados % 60;
-                
-                if (horasTotales > 0 && minutosRestantes > 0) {
-                    horasTrabajadasTexto = horasTotales + "h " + minutosRestantes + "m";
-                } else if (horasTotales > 0) {
-                    horasTrabajadasTexto = horasTotales + "h";
-                } else {
-                    horasTrabajadasTexto = minutosRestantes + " min";
-                }
-            }
+                    String horasTrabajadasTexto = "";
+                    if (horaEntradaDb != null && horaSalidaDb != null) {
+                        LocalTime entrada = horaEntradaDb.toLocalTime();
+                        LocalTime salida = horaSalidaDb.toLocalTime();
+                        long totalMinutosTrabajados = ChronoUnit.MINUTES.between(entrada, salida);
+                        if (totalMinutosTrabajados < 0) totalMinutosTrabajados = 0;
+                        
+                        long horasTotales = totalMinutosTrabajados / 60;
+                        long minutosRestantes = totalMinutosTrabajados % 60;
+                        
+                        if (horasTotales > 0 && minutosRestantes > 0) {
+                            horasTrabajadasTexto = horasTotales + "h " + minutosRestantes + "m";
+                        } else if (horasTotales > 0) {
+                            horasTrabajadasTexto = horasTotales + "h";
+                        } else {
+                            horasTrabajadasTexto = minutosRestantes + " min";
+                        }
+                    }
 %>
             <tr>
                 <td><%= fechaDia %></td>
@@ -384,31 +391,45 @@ try {
                 <td><%= !horasTrabajadasTexto.isEmpty() ? horasTrabajadasTexto : "-" %></td>
                 <td><%= horaEntradaDb != null ? minutosTardanza : "-" %></td>
                 <td>
-                    <% if (registroAsis != null) { %>
-                        <span class="<%= minutosTardanza > 0 ? "tarde" : "ok" %>">
-                            <%= minutosTardanza > 0 ? "Tardanza" : "Completado" %>
-                        </span>
-                    <% } else if (fechaDia.isAfter(hoyActual)) { %>
+                    <span class="<%= minutosTardanza > 0 ? "tarde" : "ok" %>">
+                        <%= minutosTardanza > 0 ? "Tardanza" : "Completado" %>
+                    </span>
+                </td>
+                <% if ("admin".equals(rol)) { %>
+                <td>
+                    <form method="POST" onsubmit="return confirm('¿Está seguro de eliminar este registro de asistencia?');" style="margin: 0;">
+                        <input type="hidden" name="accion" value="eliminar_asistencia">
+                        <input type="hidden" name="id_asistencia" value="<%= idAsistencia %>">
+                        <button type="submit" class="btn-eliminar-tabla">Eliminar</button>
+                    </form>
+                </td>
+                <% } %>
+            </tr>
+<%
+                }
+            } else {
+%>
+            <tr>
+                <td><%= fechaDia %></td>
+                <td><%= nombreDiaSemana %></td>
+                <td><span class="badge badge-secondary" style="font-size: 12px;">-</span></td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>-</td>
+                <td>
+                    <% if (fechaDia.isAfter(hoyActual)) { %>
                         <span class="futuro">Próximo</span>
                     <% } else { %>
                         <span class="ausente">Ausente</span>
                     <% } %>
                 </td>
                 <% if ("admin".equals(rol)) { %>
-                <td>
-                    <% if (registroAsis != null) { %>
-                        <form method="POST" onsubmit="return confirm('¿Está seguro de eliminar este registro de asistencia?');" style="margin: 0;">
-                            <input type="hidden" name="accion" value="eliminar_asistencia">
-                            <input type="hidden" name="id_asistencia" value="<%= idAsistencia %>">
-                            <button type="submit" class="btn-eliminar-tabla">Eliminar</button>
-                        </form>
-                    <% } else { %>
-                        <span style="color: #bbb; font-size: 12px;">Sin registro</span>
-                    <% } %>
-                </td>
+                <td><span style="color: #bbb; font-size: 12px;">Sin registro</span></td>
                 <% } %>
             </tr>
 <%
+            }
         }
     } else {
 %>
