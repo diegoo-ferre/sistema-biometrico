@@ -126,7 +126,8 @@ try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6
         .info-empleado-pill { font-size: 16px; font-weight: bold; background: rgba(255,255,255,0.05); padding: 10px 20px; border-radius: 12px; color: white; }
         .badge-ausencias { background: rgba(255, 82, 82, 0.15); border: 1px solid rgba(255, 82, 82, 0.3); color: #ff5252; font-size: 15px; font-weight: bold; padding: 10px 20px; border-radius: 12px; }
 
-        table { width: 100%; margin-top: 15px; color: white; border-collapse: collapse; background: rgba(255,255,255,0.03); border-radius: 15px; overflow: hidden; }
+        .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 15px; margin-top: 15px; background: rgba(255,255,255,0.03); }
+        table { width: 100%; color: white; border-collapse: collapse; min-width: 700px; }
         th, td { text-align: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.08); vertical-align: middle; font-size: 14px; color: white; }
         th { background: rgba(255,255,255,0.08); font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; color: white; }
         tr:hover td { background: rgba(255,255,255,0.04); }
@@ -176,6 +177,20 @@ try (Connection conReg = DriverManager.getConnection(url, "neondb_owner", "npg_6
             transition: transform 0.3s ease;
         }
         .btn-eliminar-tabla:hover { transform: scale(1.05); color: white; }
+
+        /* Estilos responsivos para celulares */
+        @media (max-width: 768px) {
+            body { padding: 15px 8px; }
+            .contenedor { padding: 20px 12px; border-radius: 15px; }
+            h2 { font-size: 22px; }
+            .subtitulo-informe { font-size: 13px; }
+            .header-box { position: static; text-align: center; }
+            .btn-nuevo { position: static; margin-top: 12px; display: block; width: 100%; text-align: center; }
+            .filtros-box { flex-direction: column; align-items: stretch; gap: 10px; }
+            .filtros-box .form-control { width: 100% !important; display: block !important; }
+            .info-resumen-container { flex-direction: column; align-items: stretch; }
+            .info-empleado-pill, .badge-ausencias { text-align: center; width: 100%; font-size: 14px; padding: 8px 12px; }
+        }
     </style>
 </head>
 <body>
@@ -291,6 +306,7 @@ try {
         </div>
     <% } %>
 
+    <div class="table-responsive">
     <table>
         <thead>
             <tr>
@@ -439,6 +455,7 @@ try {
 %>
         </tbody>
     </table>
+    </div>
 
 <%
 } catch (Exception e) { %> <div class="alert alert-danger mt-3">Error: <%= e.getMessage() %></div> <% } 
