@@ -92,14 +92,12 @@ const estadoGps = document.getElementById("estadoGps");
 const resultadoReconocimiento = document.getElementById("resultadoReconocimiento");
 const turnoSelect = document.getElementById("turnoSelect");
 
-// Coordenadas del lugar de trabajo permitidas
 const LATITUD_DESTINO = -25.339111;
 const LONGITUD_DESTINO = -57.523444;
 const RADIO_MAXIMO_KM = 1.0; 
 
 let ubicacionActual = null;
 
-// Activar cámara
 navigator.mediaDevices.getUserMedia({ video: true })
 .then(function(stream) {
     video.srcObject = stream;
@@ -109,7 +107,6 @@ navigator.mediaDevices.getUserMedia({ video: true })
     estadoCamara.innerText = "no se pudo acceder a la cámara";
 });
 
-// Obtener GPS del dispositivo en tiempo real
 if (navigator.geolocation) {
     navigator.geolocation.watchPosition(
         function(position) {
@@ -178,7 +175,6 @@ async function verificarRostro() {
     resultadoReconocimiento.innerHTML = '<div class="alert alert-info">verificando ubicación y rostro...</div>';
 
     try {
-        // REEMPLAZA ESTA URL CON TU ENLACE ACTIVO DE FLASK EN RENDER
         const respuesta = await fetch("https://reconocimiento-flask-2.onrender.com/reconocer", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -186,6 +182,11 @@ async function verificarRostro() {
         });
         const data = await respuesta.json();
         if (data.resultado === "permitido") {
+            let mensajeExtra = "";
+            if (data.asistencia && data.asistencia.toLowerCase().includes("tardanza")) {
+                mensajeExtra = '<br><span class="text-warning"><strong>⚠️ Aviso:</strong> Se ha registrado una tardanza y se aplicó el descuento correspondiente en la liquidación del periodo.</span>';
+            }
+
             resultadoReconocimiento.innerHTML = 
                 '<div class="alert alert-success">' +
                     '<strong>¡Asistencia marcada con éxito!</strong><br><br>' +
@@ -193,6 +194,7 @@ async function verificarRostro() {
                     '<strong>CI:</strong> ' + data.ci + '<br>' +
                     '<strong>Turno:</strong> ' + turnoSelect.options[turnoSelect.selectedIndex].text + '<br>' +
                     '<strong>Estado:</strong> ' + data.asistencia + 
+                    mensajeExtra +
                 '</div>';
         } else if (data.resultado === "denegado") {
             resultadoReconocimiento.innerHTML = '<div class="alert alert-danger">persona no registrada.</div>';
