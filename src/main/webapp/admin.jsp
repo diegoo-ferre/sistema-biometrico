@@ -129,13 +129,11 @@ try {
         .user-badge { display: flex; align-items: center; font-size: 14px; color: #94a3b8; background: rgba(255,255,255,0.03); padding: 6px 14px; border-radius: 30px; border: 1px solid var(--border-color); }
         .user-badge i { color: #818cf8; margin-right: 8px; }
 
-        /* Tarjetas estadísticas coloridas y sin iconos */
         .stat-card { background: var(--card-bg); padding: 24px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); transition: all 0.3s ease; height: 100%; }
         .stat-card:hover { transform: translateY(-4px); box-shadow: 0 15px 30px -5px rgba(0,0,0,0.5); }
         .stat-card h3 { font-size: 30px; font-weight: 700; margin-bottom: 4px; }
         .stat-card p { font-size: 11px; color: #94a3b8; margin: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
 
-        /* Variaciones de color para cada tarjeta */
         .card-personas { border-left: 4px solid #818cf8; }
         .card-personas h3 { color: #818cf8; }
 
@@ -199,6 +197,7 @@ try {
 
         <div class="menu-seccion">Control de Asistencia</div>
         <a href="ver_accesos.jsp"><i class="fas fa-clipboard-list"></i> Marcaciones</a>
+        <a href="ver_justificativos.jsp"><i class="fas fa-bell"></i> Justificativos</a>
         <a href="configurar_horario.jsp"><i class="fas fa-clock"></i> Horarios</a>
 
         <div class="menu-seccion">Nómina y Salarios</div>
