@@ -17,6 +17,8 @@ int totalPersonas = 0;
 int marcacionesHoy = 0;
 int totalTurnos = 0;
 int totalTardanzasHoy = 0;
+int totalAusentesHoy = 0;
+double totalSalariosMes = 0.0;
 
 Connection con = null;
 try {
@@ -25,22 +27,42 @@ try {
     
     Statement st = con.createStatement();
     
+    // 1. Total Personas
     ResultSet rs1 = st.executeQuery("SELECT COUNT(*) FROM personas");
     if(rs1.next()) totalPersonas = rs1.getInt(1);
     rs1.close();
     
+    // 2. Marcaciones Hoy
     ResultSet rs2 = st.executeQuery("SELECT COUNT(*) FROM asistencias WHERE fecha = CURRENT_DATE");
     if(rs2.next()) marcacionesHoy = rs2.getInt(1);
     rs2.close();
     
+    // 3. Turnos Habilitados
     ResultSet rs3 = st.executeQuery("SELECT COUNT(*) FROM turnos");
     if(rs3.next()) totalTurnos = rs3.getInt(1);
     rs3.close();
 
-    // Nueva métrica: Tardanzas registradas el día de hoy
+    // 4. Tardanzas Hoy
     ResultSet rs4 = st.executeQuery("SELECT COUNT(*) FROM asistencias WHERE fecha = CURRENT_DATE AND LOWER(estado) = 'tardanza'");
     if(rs4.next()) totalTardanzasHoy = rs4.getInt(1);
     rs4.close();
+
+    // 5. Ausentes Hoy (Personas registradas que no tienen registro de asistencia hoy)
+    ResultSet rs5 = st.executeQuery("SELECT COUNT(*) FROM personas WHERE id NOT IN (SELECT persona_id FROM asistencias WHERE fecha = CURRENT_DATE)");
+    if(rs5.next()) totalAusentesHoy = rs5.getInt(1);
+    rs5.close();
+
+    // 6. Total a pagar del periodo actual (Toma únicamente el último sueldo final actualizado por cada persona para evitar duplicados)
+    ResultSet rs6 = st.executeQuery(
+        "SELECT SUM(t.sueldo_final) FROM (" +
+        "  SELECT DISTINCT ON (s.persona_id) s.sueldo_final " +
+        "  FROM salarios s " +
+        "  JOIN periodo_activo p ON s.mes = p.mes AND s.anio = p.anio " +
+        "  ORDER BY s.persona_id, s.id DESC" +
+        ") t"
+    );
+    if(rs6.next()) totalSalariosMes = rs6.getDouble(1);
+    rs6.close();
 
     st.close();
 } catch(Exception e) {
@@ -107,11 +129,30 @@ try {
         .user-badge { display: flex; align-items: center; font-size: 14px; color: #94a3b8; background: rgba(255,255,255,0.03); padding: 6px 14px; border-radius: 30px; border: 1px solid var(--border-color); }
         .user-badge i { color: #818cf8; margin-right: 8px; }
 
-        .stat-card { background: var(--card-bg); padding: 22px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); transition: all 0.3s ease; position: relative; overflow: hidden; }
-        .stat-card:hover { transform: translateY(-4px); border-color: rgba(99, 102, 241, 0.4); box-shadow: 0 15px 30px -5px var(--accent-glow); }
-        .stat-icon { position: absolute; right: 20px; top: 20px; font-size: 28px; color: rgba(255,255,255,0.06); }
-        .stat-card h3 { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 4px; }
-        .stat-card p { font-size: 12px; color: #94a3b8; margin: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+        /* Tarjetas estadísticas coloridas y sin iconos */
+        .stat-card { background: var(--card-bg); padding: 24px; border-radius: 16px; border: 1px solid var(--border-color); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); transition: all 0.3s ease; height: 100%; }
+        .stat-card:hover { transform: translateY(-4px); box-shadow: 0 15px 30px -5px rgba(0,0,0,0.5); }
+        .stat-card h3 { font-size: 30px; font-weight: 700; margin-bottom: 4px; }
+        .stat-card p { font-size: 11px; color: #94a3b8; margin: 0; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; }
+
+        /* Variaciones de color para cada tarjeta */
+        .card-personas { border-left: 4px solid #818cf8; }
+        .card-personas h3 { color: #818cf8; }
+
+        .card-marcaciones { border-left: 4px solid #38bdf8; }
+        .card-marcaciones h3 { color: #38bdf8; }
+
+        .card-turnos { border-left: 4px solid #a855f7; }
+        .card-turnos h3 { color: #a855f7; }
+
+        .card-tardanzas { border-left: 4px solid #f59e0b; }
+        .card-tardanzas h3 { color: #f59e0b; }
+
+        .card-ausentes { border-left: 4px solid #ef4444; }
+        .card-ausentes h3 { color: #ef4444; }
+
+        .card-salarios { border-left: 4px solid #10b981; }
+        .card-salarios h3 { color: #10b981; font-size: 24px; }
 
         .content-card { background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border-color); padding: 25px; margin-top: 10px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3); }
         .content-card h4 { font-size: 16px; font-weight: 600; margin-bottom: 20px; color: #f1f5f9; display: flex; align-items: center; }
@@ -188,33 +229,43 @@ try {
 
     <!-- MÉTRICAS SUPERIORES -->
     <div class="row">
-        <div class="col-md-3 mb-4">
-            <div class="stat-card">
-                <i class="fas fa-users stat-icon"></i>
+        <div class="col-md-4 mb-4">
+            <div class="stat-card card-personas">
                 <h3><%= totalPersonas %></h3>
                 <p>Personas Registradas</p>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
-            <div class="stat-card">
-                <i class="fas fa-user-check stat-icon"></i>
+        <div class="col-md-4 mb-4">
+            <div class="stat-card card-marcaciones">
                 <h3><%= marcacionesHoy %></h3>
                 <p>Marcaciones Hoy</p>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
-            <div class="stat-card">
-                <i class="fas fa-business-time stat-icon"></i>
+        <div class="col-md-4 mb-4">
+            <div class="stat-card card-turnos">
                 <h3><%= totalTurnos %></h3>
                 <p>Turnos Habilitados</p>
             </div>
         </div>
-        <!-- Tarjeta cambiada a Tardanzas del Día -->
-        <div class="col-md-3 mb-4">
-            <div class="stat-card">
-                <i class="fas fa-exclamation-triangle stat-icon"></i>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="stat-card card-tardanzas">
                 <h3><%= totalTardanzasHoy %></h3>
-                <p>Tardanzas Hoy</p>
+                <p>Llegaron Tarde Hoy</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="stat-card card-ausentes">
+                <h3><%= totalAusentesHoy %></h3>
+                <p>Faltaron Hoy</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="stat-card card-salarios">
+                <h3>$<%= String.format("%,.0f", totalSalariosMes) %></h3>
+                <p>Total a Pagar (Periodo Actual)</p>
             </div>
         </div>
     </div>
