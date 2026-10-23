@@ -61,7 +61,20 @@ String nombreUsuario = (String) session.getAttribute("usuario");
     </style>
 </head>
 <body>
+    
 <div class="contenedor">
+    <%
+    // Captura el parámetro enviado desde el servlet procesador
+    String reporteEnviado = request.getParameter("reporte_enviado");
+    if ("exito".equals(reporteEnviado)) {
+%>
+    <div style="background-color: #d4edda; color: #155724; padding: 12px 20px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 6px; font-family: sans-serif; display: flex; align-items: center; justify-content: space-between;">
+        <span><strong>¡Éxito!</strong> Su reporte o justificación ha sido enviado correctamente y está pendiente de revisión.</span>
+        <button type="button" onclick="this.parentElement.style.display='none';" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #155724;">&times;</button>
+    </div>
+<%
+    }
+%>
     <h1>Panel del Empleado</h1>
     <p class="bienvenido">Hola, <strong><%= nombreUsuario %></strong></p>
     
