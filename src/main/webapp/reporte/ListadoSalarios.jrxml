@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd" name="null" language="groovy" pageWidth="595" pageHeight="842" columnWidth="555" leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20" uuid="9e67f322-dfd3-465c-993c-fd6ef62fa262">
+	<property name="ireport.zoom" value="1.0"/>
+	<property name="ireport.x" value="0"/>
+	<property name="ireport.y" value="0"/>
+	<queryString language="SQL">
+		<![CDATA[select * from salarios;]]>
+	</queryString>
+	<field name="sueldo_base" class="java.math.BigDecimal"/>
+	<field name="sueldo_final" class="java.math.BigDecimal"/>
+	<field name="fecha_registro" class="java.sql.Timestamp"/>
+	<field name="nombre" class="java.lang.String"/>
+	<field name="ci" class="java.lang.String"/>
+	<background>
+		<band splitType="Stretch"/>
+	</background>
+	<title>
+		<band height="123" splitType="Stretch">
+			<textField>
+				<reportElement x="36" y="30" width="128" height="20" uuid="771ee9c7-ad26-4f49-828c-6aec331cc35a"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{ci}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="84" y="50" width="100" height="20" uuid="2dc576be-4def-4bd8-994a-d32381cbac74"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sueldo_base}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="10" y="10" width="54" height="20" uuid="60fe58d4-7c6a-4b56-acae-c99cc03b3278"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[nombre:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="64" y="10" width="100" height="20" uuid="88e0d8b2-a5b9-4bfd-b530-1dad6f91ddd5"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{nombre}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="10" y="50" width="74" height="20" uuid="663af19b-610b-472c-a80a-30786c8225cd"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[sueldo base:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="84" y="70" width="100" height="20" uuid="c001e3e2-f69a-4ecc-8a40-7b6038b2219a"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{sueldo_final}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="10" y="30" width="26" height="20" uuid="7c5ec0e0-093d-4e3f-8c2a-82af8589858a"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[ci:]]></text>
+			</staticText>
+			<staticText>
+				<reportElement x="10" y="70" width="74" height="20" uuid="30bef37d-ea48-4768-847f-7188bdf08593"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[sueldo final:]]></text>
+			</staticText>
+			<textField>
+				<reportElement x="98" y="90" width="116" height="20" uuid="8c284bea-37f4-460a-bf7f-498d989b1e79"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<textFieldExpression><![CDATA[$F{fecha_registro}]]></textFieldExpression>
+			</textField>
+			<staticText>
+				<reportElement x="10" y="90" width="88" height="20" uuid="040c4b85-ac90-4f43-a8ee-06408a3110de"/>
+				<textElement verticalAlignment="Middle">
+					<font size="12" isBold="true"/>
+				</textElement>
+				<text><![CDATA[fecha registro:]]></text>
+			</staticText>
+		</band>
+	</title>
+</jasperReport>
