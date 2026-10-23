@@ -30,13 +30,16 @@ public class ActualizarPasswordServlet extends HttpServlet {
         String nuevoPassword = request.getParameter("nuevoPassword");
         String confirmarPassword = request.getParameter("confirmarPassword");
 
+        if (passwordActual != null) passwordActual = passwordActual.trim();
+        if (nuevoPassword != null) nuevoPassword = nuevoPassword.trim();
+        if (confirmarPassword != null) confirmarPassword = confirmarPassword.trim();
+
         // 3. Validar que las contraseñas nuevas coincidan
         if (nuevoPassword == null || !nuevoPassword.equals(confirmarPassword)) {
             response.sendRedirect("cambiar_password.jsp?error=noCoinciden");
             return;
         }
 
-        // 4. Configuración exacta de la conexión a Neon con tus credenciales
         String URL = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require";
         String USER = "neondb_owner";
         String PASS = "npg_6rt8OdayAHcm";
@@ -45,8 +48,8 @@ public class ActualizarPasswordServlet extends HttpServlet {
             Class.forName("org.postgresql.Driver");
             Connection conn = DriverManager.getConnection(URL, USER, PASS);
 
-            // 5. Verificar la contraseña actual en la tabla "usuarios"
-            String sqlVerificar = "SELECT * FROM usuarios WHERE usuario = ? AND password = ?";
+            // 5. Verificar la contraseña actual usando el nombre de usuario limpio e ignorando mayúsculas
+            String sqlVerificar = "SELECT * FROM usuarios WHERE LOWER(TRIM(usuario)) = LOWER(TRIM(?)) AND password = ?";
             PreparedStatement pstmtVerificar = conn.prepareStatement(sqlVerificar);
             pstmtVerificar.setString(1, nombreUsuario);
             pstmtVerificar.setString(2, passwordActual);
@@ -57,7 +60,7 @@ public class ActualizarPasswordServlet extends HttpServlet {
                 pstmtVerificar.close();
 
                 // 6. Si es correcta, actualizamos con el nuevo password
-                String sqlActualizar = "UPDATE usuarios SET password = ? WHERE usuario = ?";
+                String sqlActualizar = "UPDATE usuarios SET password = ? WHERE LOWER(TRIM(usuario)) = LOWER(TRIM(?))";
                 PreparedStatement pstmtActualizar = conn.prepareStatement(sqlActualizar);
                 pstmtActualizar.setString(1, nuevoPassword);
                 pstmtActualizar.setString(2, nombreUsuario);
@@ -66,10 +69,8 @@ public class ActualizarPasswordServlet extends HttpServlet {
                 pstmtActualizar.close();
                 conn.close();
 
-                // CORREGIDO: Redirigir de vuelta a cambiar_password.jsp para que muestre el mensaje verde en su lugar
                 response.sendRedirect("cambiar_password.jsp?exito=passwordActualizado");
             } else {
-                // Si la contraseña actual no coincide
                 rs.close();
                 pstmtVerificar.close();
                 conn.close();
