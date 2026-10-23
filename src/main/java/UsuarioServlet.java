@@ -12,24 +12,25 @@ public class UsuarioServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        request.setCharacterEncoding("UTF-8");
         String accion = request.getParameter("accion");
 
+        Connection con = null;
         try {
+            Class.forName("org.postgresql.Driver");
+            String url = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require";
+            String user = "neondb_owner";
+            String pass = "npg_6rt8OdayAHcm";
 
-            Connection con = DriverManager.getConnection(
-                    "jdbc:postgresql://localhost:5432/biometrico",
-                    "postgres",
-                    "1234"
-            );
+            con = DriverManager.getConnection(url, user, pass);
 
             if ("crear".equals(accion)) {
-
                 String usuario = request.getParameter("usuario");
                 String password = request.getParameter("password");
                 String rol = request.getParameter("rol");
 
                 PreparedStatement ps = con.prepareStatement(
-                    "INSERT INTO usuarios(usuario,password,rol) VALUES (?,?,?)"
+                    "INSERT INTO usuarios (usuario, password, rol) VALUES (?, ?, ?)"
                 );
 
                 ps.setString(1, usuario);
@@ -37,14 +38,20 @@ public class UsuarioServlet extends HttpServlet {
                 ps.setString(3, rol);
 
                 ps.executeUpdate();
+                ps.close();
             }
-
-            con.close();
 
             response.sendRedirect("usuarios.jsp");
 
         } catch (Exception e) {
             e.printStackTrace();
+            response.sendRedirect("usuarios.jsp?error=1");
+        } finally {
+            try {
+                if (con != null) con.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -54,32 +61,38 @@ public class UsuarioServlet extends HttpServlet {
 
         String accion = request.getParameter("accion");
 
+        Connection con = null;
         try {
+            Class.forName("org.postgresql.Driver");
+            String url = "jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require";
+            String user = "neondb_owner";
+            String pass = "npg_6rt8OdayAHcm";
 
-            Connection con = DriverManager.getConnection(
-                    "jdbc:postgresql://localhost:5432/biometrico",
-                    "postgres",
-                    "1234"
-            );
+            con = DriverManager.getConnection(url, user, pass);
 
             if ("eliminar".equals(accion)) {
-
                 int id = Integer.parseInt(request.getParameter("id"));
 
                 PreparedStatement ps = con.prepareStatement(
-                    "DELETE FROM usuarios WHERE id=?"
+                    "DELETE FROM usuarios WHERE id = ?"
                 );
 
                 ps.setInt(1, id);
                 ps.executeUpdate();
+                ps.close();
             }
-
-            con.close();
 
             response.sendRedirect("usuarios.jsp");
 
         } catch (Exception e) {
             e.printStackTrace();
+            response.sendRedirect("usuarios.jsp?error=1");
+        } finally {
+            try {
+                if (con != null) con.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }
