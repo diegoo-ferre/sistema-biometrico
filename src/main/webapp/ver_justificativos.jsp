@@ -11,6 +11,31 @@ if (session == null || session.getAttribute("usuario") == null) {
 }
 
 String usuarioLogueado = (String) session.getAttribute("usuario");
+
+// Lógica para eliminar el reporte si se solicita
+String accionEliminar = request.getParameter("accion");
+if ("eliminar".equals(accionEliminar)) {
+    String idRepStr = request.getParameter("id");
+    if (idRepStr != null) {
+        Connection connDel = null;
+        PreparedStatement psDel = null;
+        try {
+            Class.forName("org.postgresql.Driver");
+            connDel = DriverManager.getConnection("jdbc:postgresql://ep-ancient-haze-aca057wp-pooler.sa-east-1.aws.neon.tech/neondb?sslmode=require", "neondb_owner", "npg_6rt8OdayAHcm");
+            psDel = connDel.prepareStatement("DELETE FROM reportes_empleado WHERE id = ?");
+            psDel.setInt(1, Integer.parseInt(idRepStr));
+            psDel.executeUpdate();
+            
+            response.sendRedirect("ver_justificativos.jsp?eliminado=exito");
+            return;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if (psDel != null) try { psDel.close(); } catch(Exception ex) {}
+            if (connDel != null) try { connDel.close(); } catch(Exception ex) {}
+        }
+    }
+}
 %>
 <!DOCTYPE html>
 <html lang="es">
@@ -94,8 +119,31 @@ String usuarioLogueado = (String) session.getAttribute("usuario");
             text-decoration: none;
             transition: 0.2s ease;
             box-shadow: 0 4px 10px rgba(66, 37, 163, 0.3);
+            display: inline-block;
         }
         .btn-lila-action:hover {
+            color: white;
+            text-decoration: none;
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        /* Estilo rojo degradado para el botón de eliminar */
+        .btn-rojo-action {
+            background: linear-gradient(35deg, #f74040, #f50404);
+            border: none;
+            border-radius: 20px;
+            padding: 6px 14px;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: 0.2s ease;
+            box-shadow: 0 4px 10px rgba(247, 64, 64, 0.3);
+            display: inline-block;
+            margin-left: 5px;
+        }
+        .btn-rojo-action:hover {
             color: white;
             text-decoration: none;
             opacity: 0.9;
@@ -166,6 +214,19 @@ String usuarioLogueado = (String) session.getAttribute("usuario");
         </div>
     </div>
 
+    <!-- Mensaje de éxito al eliminar -->
+    <%
+    String eliminado = request.getParameter("eliminado");
+    if ("exito".equals(eliminado)) {
+    %>
+        <div style="background-color: #d4edda; color: #155724; padding: 12px 20px; margin-bottom: 20px; border: 1px solid #c3e6cb; border-radius: 6px; font-family: sans-serif; display: flex; align-items: center; justify-content: space-between;">
+            <span><strong>¡Éxito!</strong> El reporte ha sido eliminado correctamente.</span>
+            <button type="button" onclick="this.parentElement.style.display='none';" style="background: none; border: none; font-size: 18px; cursor: pointer; color: #155724;">&times;</button>
+        </div>
+    <%
+    }
+    %>
+
     <!-- SECCIÓN DE REPORTES / JUSTIFICATIVOS -->
     <div class="content-card">
         <h4><i class="fas fa-bell"></i> Justificativos y Reportes de Empleados</h4>
@@ -205,6 +266,7 @@ String usuarioLogueado = (String) session.getAttribute("usuario");
                         <td><%= rsRep.getString("motivo") %></td>
                         <td>
                             <a href="aplicar_descuentos.jsp" class="btn-lila-action">Gestionar Descuento</a>
+                            <a href="ver_justificativos.jsp?accion=eliminar&id=<%= rsRep.getInt("id") %>" class="btn-rojo-action" onclick="return confirm('¿Está seguro de que desea eliminar este reporte?');">Eliminar</a>
                         </td>
                     </tr>
                     <%
