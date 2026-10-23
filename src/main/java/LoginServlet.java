@@ -20,16 +20,16 @@ public class LoginServlet extends HttpServlet {
 
         request.setCharacterEncoding("UTF-8");
 
-        String usuario = request.getParameter("usuario");
+        String usuarioInput = request.getParameter("usuario");
         String password = request.getParameter("password");
 
-        if (usuario == null || password == null ||
-            usuario.trim().isEmpty() || password.trim().isEmpty()) {
+        if (usuarioInput == null || password == null ||
+            usuarioInput.trim().isEmpty() || password.trim().isEmpty()) {
             response.sendRedirect("login.jsp?error=1");
             return;
         }
 
-        usuario = usuario.trim();
+        usuarioInput = usuarioInput.trim();
         password = password.trim();
 
         Connection con = null;
@@ -42,28 +42,30 @@ public class LoginServlet extends HttpServlet {
 
             con = DriverManager.getConnection(url, user, pass);
 
-            // Consultamos también la columna 'ci' para poder filtrar las marcaciones después
-            String sql = "SELECT rol, ci FROM usuarios WHERE usuario=? AND password=?";
+            // Seleccionamos también la columna 'usuario' real de la BD
+            String sql = "SELECT usuario, rol, ci FROM usuarios WHERE (LOWER(TRIM(usuario)) = LOWER(TRIM(?)) OR TRIM(ci) = TRIM(?)) AND password = ?";
             PreparedStatement ps = con.prepareStatement(sql);
 
-            ps.setString(1, usuario);
-            ps.setString(2, password);
+            ps.setString(1, usuarioInput);
+            ps.setString(2, usuarioInput);
+            ps.setString(3, password);
 
             ResultSet rs = ps.executeQuery();
 
             if (rs.next()) {
+                String usuarioReal = rs.getString("usuario"); // El nombre exacto guardado en la BD
                 String rol = rs.getString("rol");
-                String ci = rs.getString("ci"); // Obtenemos la cédula del usuario
+                String ci = rs.getString("ci");
 
                 HttpSession session = request.getSession();
-                session.setAttribute("usuario", usuario);
+                session.setAttribute("usuario", usuarioReal); // Guardamos el nombre real de la BD en la sesión
                 session.setAttribute("rol", rol);
-                session.setAttribute("ci", ci); // Guardamos la CI en la sesión
+                session.setAttribute("ci", ci);
 
                 if ("admin".equalsIgnoreCase(rol)) {
                     response.sendRedirect("admin.jsp");
                 } else {
-                    response.sendRedirect("empleado_dashboard.jsp"); // Redirigimos al dashboard del empleado
+                    response.sendRedirect("empleado_dashboard.jsp");
                 }
             } else {
                 response.sendRedirect("login.jsp?error=1");
